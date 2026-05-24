@@ -1,5 +1,5 @@
 /**
- * Home Page — Airbrush Color Mixer
+ * Home Page — Airbrush Color Mixer v2
  * 
  * Design: Workshop Industrial
  * - Dark charcoal base with warm amber accents
@@ -11,13 +11,15 @@
 import { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Camera, Palette, BookOpen, Crosshair, Zap } from 'lucide-react';
+import { Camera, Palette, BookOpen, Crosshair, Zap, Package } from 'lucide-react';
 import ImageColorPicker from '@/components/ImageColorPicker';
 import ManualColorPicker from '@/components/ManualColorPicker';
 import FormulaDisplay from '@/components/FormulaDisplay';
 import CategoryFilter from '@/components/CategoryFilter';
 import PaintCatalog from '@/components/PaintCatalog';
 import SavedRecipes from '@/components/SavedRecipes';
+import PaintInventory from '@/components/PaintInventory';
+import { useInventory } from '@/hooks/useInventory';
 import { findMixFormula, MixResult } from '@/lib/colorMixer';
 import { Paint, PaintBrand, PaintCategory } from '@/lib/paintDatabase';
 
@@ -28,39 +30,62 @@ export default function Home() {
   const [targetColor, setTargetColor] = useState<[number, number, number] | null>(null);
   const [mixResult, setMixResult] = useState<MixResult | null>(null);
   const [selectedBrands, setSelectedBrands] = useState<PaintBrand[]>(['createx-wicked']);
-  const [selectedCategories, setSelectedCategories] = useState<PaintCategory[]>(['transparent', 'opaque', 'detail', 'standard']);
+  const [selectedCategories, setSelectedCategories] = useState<PaintCategory[]>(['transparent', 'opaque', 'detail', 'standard', 'pearl', 'metallic', 'fluorescent']);
   const [activeTab, setActiveTab] = useState('camera');
   const [showCatalog, setShowCatalog] = useState(false);
+  const [showInventory, setShowInventory] = useState(false);
 
-  const recalculate = useCallback((r: number, g: number, b: number, brands: PaintBrand[], categories: PaintCategory[]) => {
-    const result = findMixFormula(r, g, b, { brands, categories });
+  // Paint inventory hook
+  const inventory = useInventory();
+
+  const recalculate = useCallback((
+    r: number, g: number, b: number,
+    brands: PaintBrand[],
+    categories: PaintCategory[],
+    useInvOnly: boolean,
+    ownedSet: Set<string>
+  ) => {
+    const result = findMixFormula(r, g, b, {
+      brands,
+      categories,
+      inventoryFilter: useInvOnly && ownedSet.size > 0 ? ownedSet : undefined,
+    });
     setMixResult(result);
   }, []);
 
   const handleColorPick = useCallback((r: number, g: number, b: number) => {
     setTargetColor([r, g, b]);
-    recalculate(r, g, b, selectedBrands, selectedCategories);
-  }, [selectedBrands, selectedCategories, recalculate]);
+    recalculate(r, g, b, selectedBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints);
+  }, [selectedBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints, recalculate]);
 
   const handleBrandsChange = useCallback((newBrands: PaintBrand[]) => {
     setSelectedBrands(newBrands);
     if (targetColor) {
-      recalculate(targetColor[0], targetColor[1], targetColor[2], newBrands, selectedCategories);
+      recalculate(targetColor[0], targetColor[1], targetColor[2], newBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints);
     }
-  }, [targetColor, selectedCategories, recalculate]);
+  }, [targetColor, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints, recalculate]);
 
   const handleCategoriesChange = useCallback((newCategories: PaintCategory[]) => {
     setSelectedCategories(newCategories);
     if (targetColor) {
-      recalculate(targetColor[0], targetColor[1], targetColor[2], selectedBrands, newCategories);
+      recalculate(targetColor[0], targetColor[1], targetColor[2], selectedBrands, newCategories, inventory.useInventoryOnly, inventory.ownedPaints);
     }
-  }, [targetColor, selectedBrands, recalculate]);
+  }, [targetColor, selectedBrands, inventory.useInventoryOnly, inventory.ownedPaints, recalculate]);
 
   const handlePaintSelect = useCallback((paint: Paint) => {
     setTargetColor(paint.rgb);
-    recalculate(paint.rgb[0], paint.rgb[1], paint.rgb[2], selectedBrands, selectedCategories);
+    recalculate(paint.rgb[0], paint.rgb[1], paint.rgb[2], selectedBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints);
     setShowCatalog(false);
-  }, [selectedBrands, selectedCategories, recalculate]);
+  }, [selectedBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints, recalculate]);
+
+  // Recalculate when inventory toggle changes
+  const handleInventoryToggle = useCallback(() => {
+    inventory.toggleUseInventoryOnly();
+    if (targetColor) {
+      const newUseInvOnly = !inventory.useInventoryOnly;
+      recalculate(targetColor[0], targetColor[1], targetColor[2], selectedBrands, selectedCategories, newUseInvOnly, inventory.ownedPaints);
+    }
+  }, [targetColor, selectedBrands, selectedCategories, inventory, recalculate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -130,6 +155,37 @@ export default function Home() {
           />
         </section>
 
+        {/* Paint Inventory */}
+        <section>
+          <Button
+            variant="outline"
+            onClick={() => setShowInventory(!showInventory)}
+            className="w-full border-[oklch(0.30_0.01_285)] text-foreground hover:bg-accent font-mono"
+          >
+            <Package className="w-4 h-4 mr-2" />
+            {showInventory ? 'HIDE' : 'MANAGE'} MY PAINT SHELF
+            {inventory.ownedCount > 0 && (
+              <span className="ml-2 text-xs text-amber bg-amber/10 px-2 py-0.5 rounded">
+                {inventory.ownedCount} owned
+              </span>
+            )}
+          </Button>
+          {showInventory && (
+            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+              <PaintInventory
+                ownedPaints={inventory.ownedPaints}
+                useInventoryOnly={inventory.useInventoryOnly}
+                onTogglePaint={inventory.togglePaint}
+                onAddAllFromBrand={inventory.addAllFromBrand}
+                onRemoveAllFromBrand={inventory.removeAllFromBrand}
+                onClearAll={inventory.clearAll}
+                onToggleUseInventoryOnly={handleInventoryToggle}
+                isOwned={inventory.isOwned}
+              />
+            </div>
+          )}
+        </section>
+
         {/* Results Section */}
         {mixResult && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -138,6 +194,11 @@ export default function Home() {
               <h2 className="font-mono text-sm text-muted-foreground uppercase tracking-wider">
                 MIXING FORMULA
               </h2>
+              {inventory.useInventoryOnly && inventory.ownedCount > 0 && (
+                <span className="text-[10px] font-mono text-green-400 bg-green-900/20 px-2 py-0.5 rounded border border-green-700/30">
+                  SHELF ONLY
+                </span>
+              )}
             </div>
             <FormulaDisplay result={mixResult} />
           </section>
@@ -178,16 +239,16 @@ export default function Home() {
                 </div>
                 <h3 className="font-medium text-foreground text-sm">1. Capture Color</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Take a photo of the surface you want to match, or enter a color manually using hex codes or RGB sliders.
+                  Take a photo of the surface you want to match. Use the white-balance calibration for accurate colour capture.
                 </p>
               </div>
               <div className="space-y-2">
                 <div className="w-10 h-10 rounded-lg bg-amber/10 flex items-center justify-center">
                   <Crosshair className="w-5 h-5 text-amber" />
                 </div>
-                <h3 className="font-medium text-foreground text-sm">2. Sample Point</h3>
+                <h3 className="font-medium text-foreground text-sm">2. Sample Area</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Tap precisely on the photo to sample the exact color you need. The crosshair helps you pick the right spot.
+                  Use area-average sampling for textured surfaces, or single-pixel for flat colours. Adjust the sample size for best results.
                 </p>
               </div>
               <div className="space-y-2">
@@ -196,7 +257,7 @@ export default function Home() {
                 </div>
                 <h3 className="font-medium text-foreground text-sm">3. Get Formula</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Instantly receive a mixing formula with exact paint codes and ratios by volume from your selected brands.
+                  Get a mixing formula with ΔE accuracy rating, ml/drops calculator, and the option to restrict to paints you own.
                 </p>
               </div>
             </div>
