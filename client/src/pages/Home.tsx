@@ -11,7 +11,7 @@
 import { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Camera, Palette, BookOpen, Crosshair, Zap, Package, Download, AlertTriangle, Info } from 'lucide-react';
+import { Camera, Palette, BookOpen, Crosshair, Zap, Package, Download, AlertTriangle, Info, ChevronDown, ChevronRight } from 'lucide-react';
 import ImageColorPicker from '@/components/ImageColorPicker';
 import ManualColorPicker from '@/components/ManualColorPicker';
 import FormulaDisplay from '@/components/FormulaDisplay';
@@ -31,6 +31,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('camera');
   const [showCatalog, setShowCatalog] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
+  const [showCalibration, setShowCalibration] = useState(false);
 
   const inventory = useInventory();
 
@@ -216,47 +217,66 @@ export default function Home() {
           )}
         </section>
 
-        {/* Calibration Card & Accuracy Info */}
-        <section className="workshop-panel rounded-lg p-5 space-y-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Download className="w-4 h-4 text-primary" />
-            <h2 className="font-mono text-sm text-foreground uppercase tracking-wider font-bold">
-              CALIBRATION CARD
-            </h2>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            For accurate color capture, print this calibration card on <span className="font-bold text-foreground">matte cardstock</span> and
-            keep it in your workshop. Place it next to the surface you're photographing, then use the 2-point calibration
-            (white patch + black patch) to correct color cast and exposure.
-          </p>
-          <div className="flex flex-wrap gap-3 items-center">
-            <a
-              href="/manus-storage/calibration-card_a6c2cbc1.pdf"
-              download="airbrush-calibration-card.pdf"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground font-mono text-sm font-bold hover:bg-amber-dark transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              Download Calibration Card (PDF)
-            </a>
-            <span className="text-[10px] text-muted-foreground">Free - print on matte cardstock</span>
-          </div>
-          <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
-              <div className="text-[11px] text-blue-900 leading-relaxed space-y-1">
-                <p><span className="font-bold">For professionals:</span> A Kodak/X-Rite 18% gray card ($10-20 from camera stores) provides even more reliable reference than printed patches.</p>
+        {/* Calibration Card & Accuracy Info — Collapsible */}
+        <section className="workshop-panel rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowCalibration(!showCalibration)}
+            className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors duration-150"
+          >
+            <div className="flex items-center gap-2">
+              <Download className="w-4 h-4 text-primary" />
+              <span className="font-mono text-xs text-foreground uppercase tracking-wider font-bold">
+                CALIBRATION & ACCURACY
+              </span>
+            </div>
+            {showCalibration ? (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
+          {!showCalibration && (
+            <div className="px-4 pb-3">
+              <p className="text-[10px] text-muted-foreground">Download calibration card, learn about accuracy limits</p>
+            </div>
+          )}
+          {showCalibration && (
+            <div className="px-4 pb-4 space-y-4 animate-in fade-in slide-in-from-top-1 duration-150">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                For accurate color capture, print this calibration card on <span className="font-bold text-foreground">matte cardstock</span> and
+                keep it in your workshop. Place it next to the surface you're photographing, then use the 2-point calibration
+                (white patch + black patch) to correct color cast and exposure.
+              </p>
+              <div className="flex flex-wrap gap-3 items-center">
+                <a
+                  href="/manus-storage/calibration-card_a6c2cbc1.pdf"
+                  download="airbrush-calibration-card.pdf"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground font-mono text-sm font-bold hover:bg-amber-dark transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Calibration Card (PDF)
+                </a>
+                <span className="text-[10px] text-muted-foreground">Free - print on matte cardstock</span>
+              </div>
+              <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <Info className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-blue-900 leading-relaxed space-y-1">
+                    <p><span className="font-bold">For professionals:</span> A Kodak/X-Rite 18% gray card ($10-20 from camera stores) provides even more reliable reference than printed patches.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                  <div className="text-[11px] text-amber-900 leading-relaxed space-y-1">
+                    <p><span className="font-bold">Honest limitation:</span> Even with perfect calibration, phone cameras have different spectral sensitivity than human eyes (metamerism). Two colors that look identical to you can read as different RGB values on camera, and vice versa.</p>
+                    <p>Calibration gets you ~80% of the way. The remaining 20% is a fundamental limit of phone photography. <span className="font-bold">Always spray a test card before committing to a job.</span></p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
-              <div className="text-[11px] text-amber-900 leading-relaxed space-y-1">
-                <p><span className="font-bold">Honest limitation:</span> Even with perfect calibration, phone cameras have different spectral sensitivity than human eyes (metamerism). Two colors that look identical to you can read as different RGB values on camera, and vice versa.</p>
-                <p>Calibration gets you ~80% of the way. The remaining 20% is a fundamental limit of phone photography. <span className="font-bold">Always spray a test card before committing to a job.</span></p>
-              </div>
-            </div>
-          </div>
+          )}
         </section>
 
         {/* How It Works */}
