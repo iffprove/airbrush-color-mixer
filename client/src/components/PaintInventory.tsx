@@ -1,13 +1,10 @@
 /**
  * PaintInventory Component
- * Allows users to manage which paints they own.
- * Features bulk add/remove by brand, search, and visual indicators.
- * 
- * Design: Workshop Industrial
+ * Manage owned paints. Light theme, high-contrast.
  */
 
 import { useState, useMemo } from 'react';
-import { Paint, PaintBrand, brands, allPaints, getPaintsByBrand } from '@/lib/paintDatabase';
+import { PaintBrand, brands, getPaintsByBrand } from '@/lib/paintDatabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -65,53 +62,51 @@ export default function PaintInventory({
 
   return (
     <div className="workshop-panel rounded-lg p-4 space-y-4">
-      {/* Header with inventory toggle */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Package className="w-4 h-4 text-amber" />
-          <h3 className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+          <Package className="w-4 h-4 text-primary" />
+          <h3 className="font-mono text-xs text-foreground uppercase tracking-wider font-bold">
             MY PAINT SHELF
           </h3>
-          <span className="text-xs font-mono text-amber bg-amber/10 px-2 py-0.5 rounded">
+          <span className="text-xs font-mono text-primary-foreground bg-primary px-2 py-0.5 rounded font-bold">
             {ownedPaints.size} owned
           </span>
         </div>
       </div>
 
       {/* Use inventory only toggle */}
-      <div className="flex items-center justify-between p-3 rounded-md bg-[oklch(0.16_0.005_285)] border border-[oklch(0.25_0.005_285)]">
-        <div className="flex items-center gap-2">
-          <Label className="text-xs font-mono text-muted-foreground">
-            MIX ONLY FROM MY SHELF
-          </Label>
-        </div>
+      <div className="flex items-center justify-between p-3 rounded-md bg-secondary border-2 border-border">
+        <Label className="text-xs font-mono text-foreground font-bold">
+          MIX ONLY FROM MY SHELF
+        </Label>
         <Switch
           checked={useInventoryOnly}
           onCheckedChange={onToggleUseInventoryOnly}
-          className="data-[state=checked]:bg-amber"
+          className="data-[state=checked]:bg-primary"
         />
       </div>
       {useInventoryOnly && ownedPaints.size === 0 && (
-        <p className="text-xs text-orange-400 bg-orange-900/20 border border-orange-700/30 rounded px-3 py-2">
-          You haven't added any paints yet. The mixer needs at least a few paints to generate formulas. Add your paints below.
+        <p className="text-xs text-orange-800 bg-orange-100 border-2 border-orange-300 rounded px-3 py-2 font-bold">
+          You haven't added any paints yet. The mixer needs at least a few paints to generate formulas.
         </p>
       )}
 
       {/* Brand selector */}
       <div className="flex items-center gap-2">
         <Select value={selectedBrand} onValueChange={(v) => { setSelectedBrand(v as PaintBrand); setSearchQuery(''); }}>
-          <SelectTrigger className="bg-[oklch(0.18_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground font-mono text-sm flex-1">
+          <SelectTrigger className="bg-card border-2 border-border text-foreground font-mono text-sm flex-1 font-bold">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.20_0.005_285)] border-[oklch(0.30_0.01_285)]">
+          <SelectContent className="bg-card border-2 border-border">
             {brands.map(brand => (
-              <SelectItem key={brand.id} value={brand.id} className="font-mono text-sm">
+              <SelectItem key={brand.id} value={brand.id} className="font-mono text-sm font-bold">
                 {brand.shortName}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <span className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+        <span className="text-xs font-mono text-muted-foreground font-bold whitespace-nowrap">
           {ownedInBrand}/{brandPaints.length}
         </span>
       </div>
@@ -123,17 +118,17 @@ export default function PaintInventory({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search by name or code..."
-          className="pl-9 bg-[oklch(0.16_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground text-sm placeholder:text-muted-foreground/50"
+          className="pl-9 bg-card border-2 border-border text-foreground text-sm font-bold placeholder:text-muted-foreground/60"
         />
       </div>
 
       {/* Bulk actions */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleAddAll}
-          className="text-xs text-green-400 hover:text-green-300 hover:bg-green-900/20 font-mono"
+          className="text-xs text-green-700 hover:text-green-900 hover:bg-green-100 font-mono font-bold"
         >
           <PlusCircle className="w-3 h-3 mr-1" />
           Add All{searchQuery ? ' Filtered' : ''}
@@ -142,7 +137,7 @@ export default function PaintInventory({
           variant="ghost"
           size="sm"
           onClick={handleRemoveAll}
-          className="text-xs text-red-400 hover:text-red-300 hover:bg-red-900/20 font-mono"
+          className="text-xs text-red-700 hover:text-red-900 hover:bg-red-100 font-mono font-bold"
         >
           <MinusCircle className="w-3 h-3 mr-1" />
           Remove All{searchQuery ? ' Filtered' : ''}
@@ -152,7 +147,7 @@ export default function PaintInventory({
             variant="ghost"
             size="sm"
             onClick={onClearAll}
-            className="text-xs text-muted-foreground hover:text-destructive font-mono ml-auto"
+            className="text-xs text-muted-foreground hover:text-destructive font-mono font-bold ml-auto"
           >
             <Trash2 className="w-3 h-3 mr-1" />
             Clear Shelf
@@ -168,25 +163,23 @@ export default function PaintInventory({
             <button
               key={paint.code}
               onClick={() => onTogglePaint(paint.brand, paint.code)}
-              className={`group flex items-center gap-2 p-2 rounded-md transition-colors duration-150 w-full text-left ${
+              className={`group flex items-center gap-2 p-2.5 rounded-md transition-colors duration-150 w-full text-left touch-target ${
                 owned
-                  ? 'bg-amber/10 border border-amber/30'
-                  : 'hover:bg-accent border border-transparent'
+                  ? 'bg-primary/10 border-2 border-primary/40'
+                  : 'hover:bg-accent border-2 border-transparent hover:border-border'
               }`}
             >
-              {/* Owned indicator */}
               <div className={`w-5 h-5 rounded-sm flex items-center justify-center flex-shrink-0 transition-colors ${
-                owned ? 'bg-amber text-black' : 'bg-[oklch(0.22_0.005_285)] text-transparent group-hover:text-muted-foreground/30'
+                owned ? 'bg-primary text-white' : 'bg-secondary border-2 border-border text-transparent group-hover:text-muted-foreground/30'
               }`}>
                 <Check className="w-3 h-3" />
               </div>
-              {/* Color swatch */}
               <div
                 className="w-6 h-6 rounded paint-chip flex-shrink-0"
                 style={{ backgroundColor: `rgb(${paint.rgb.join(',')})` }}
               />
               <div className="min-w-0 flex-1">
-                <p className="font-mono text-[11px] text-amber truncate">{paint.code}</p>
+                <p className="font-mono text-[11px] text-primary font-bold truncate">{paint.code}</p>
                 <p className="text-[11px] text-foreground truncate">{paint.name}</p>
               </div>
             </button>
@@ -195,7 +188,7 @@ export default function PaintInventory({
       </div>
 
       {filteredPaints.length === 0 && (
-        <p className="text-xs text-muted-foreground text-center py-4">
+        <p className="text-xs text-muted-foreground text-center py-4 font-bold">
           No paints match your search.
         </p>
       )}

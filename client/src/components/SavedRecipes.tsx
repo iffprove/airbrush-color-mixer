@@ -1,9 +1,7 @@
 /**
  * SavedRecipes Component
- * Allows users to save mixing formulas, view them in a list,
- * and export as a printable work order.
- * 
- * Design: Workshop Industrial
+ * Save formulas, view list, export as work order.
+ * Light theme, high-contrast.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -55,7 +53,7 @@ function generateWorkOrder(recipes: SavedRecipe[]): string {
   recipes.forEach((recipe, index) => {
     text += `┌─ RECIPE ${index + 1}: ${recipe.name} ${'─'.repeat(Math.max(0, 40 - recipe.name.length))}┐\n`;
     text += `│ Target: ${recipe.targetHex.toUpperCase()} (RGB ${recipe.targetRgb.join(', ')})\n`;
-    text += `│ Match:  ${Math.round(recipe.formula.matchScore)}%\n`;
+    text += `│ Match:  ${Math.round(recipe.formula.matchScore)}% (ΔE ${recipe.formula.deltaE.toFixed(1)})\n`;
     text += `│\n`;
     text += `│ PAINTS:\n`;
     recipe.formula.paints.forEach((paint, i) => {
@@ -75,6 +73,7 @@ function generateWorkOrder(recipes: SavedRecipe[]): string {
   text += `• Mix small test batches on scrap material first\n`;
   text += `• Ratios are by volume — use measuring cups or syringes\n`;
   text += `• When mixing across brands, test compatibility first\n`;
+  text += `• These are SIMULATED predictions — real results may vary\n`;
 
   return text;
 }
@@ -132,7 +131,6 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
       toast.error('No recipes to export');
       return;
     }
-
     const text = generateWorkOrder(recipes);
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -164,7 +162,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
           {!showSaveForm ? (
             <Button
               onClick={() => setShowSaveForm(true)}
-              className="w-full bg-amber/20 text-amber hover:bg-amber/30 border border-amber/30 font-mono"
+              className="w-full bg-primary text-primary-foreground hover:bg-amber-dark font-mono font-bold h-12"
             >
               <Save className="w-4 h-4 mr-2" />
               SAVE THIS FORMULA
@@ -180,7 +178,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                   value={recipeName}
                   onChange={(e) => setRecipeName(e.target.value)}
                   placeholder="Recipe name (e.g., 'Candy Red Hood')"
-                  className="bg-[oklch(0.16_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground font-mono text-sm placeholder:text-muted-foreground/50"
+                  className="bg-card border-2 border-border text-foreground font-mono text-sm placeholder:text-muted-foreground/60 font-bold"
                   onKeyDown={(e) => e.key === 'Enter' && handleSave()}
                   autoFocus
                 />
@@ -189,7 +187,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                 <Button
                   onClick={handleSave}
                   size="sm"
-                  className="bg-amber text-black hover:bg-amber/80 font-mono"
+                  className="bg-primary text-primary-foreground hover:bg-amber-dark font-mono font-bold"
                 >
                   <Save className="w-3 h-3 mr-1" />
                   Save
@@ -213,7 +211,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
         <Button
           variant="outline"
           onClick={() => setShowList(!showList)}
-          className="flex-1 border-[oklch(0.30_0.01_285)] text-foreground hover:bg-accent font-mono"
+          className="flex-1 border-2 border-border text-foreground hover:bg-accent font-mono font-bold h-12"
         >
           <ClipboardList className="w-4 h-4 mr-2" />
           {showList ? 'HIDE' : 'VIEW'} SAVED RECIPES ({recipes.length})
@@ -223,7 +221,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
             variant="outline"
             size="icon"
             onClick={handleExport}
-            className="border-[oklch(0.30_0.01_285)] text-amber hover:bg-amber/10"
+            className="border-2 border-border text-primary hover:bg-primary/10 h-12 w-12"
             title="Export work order"
           >
             <Download className="w-4 h-4" />
@@ -237,8 +235,8 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
           {recipes.length === 0 ? (
             <div className="workshop-panel rounded-lg p-6 text-center">
               <ClipboardList className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">No saved recipes yet.</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">
+              <p className="text-sm text-muted-foreground font-bold">No saved recipes yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Mix a color and tap "Save This Formula" to start building your work order.
               </p>
             </div>
@@ -250,7 +248,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleCopyAll}
-                  className="text-xs text-muted-foreground hover:text-foreground font-mono"
+                  className="text-xs text-muted-foreground hover:text-foreground font-mono font-bold"
                 >
                   <FileText className="w-3 h-3 mr-1" />
                   Copy All
@@ -259,7 +257,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                   variant="ghost"
                   size="sm"
                   onClick={handleExport}
-                  className="text-xs text-amber hover:text-amber/80 font-mono"
+                  className="text-xs text-primary hover:text-amber-dark font-mono font-bold"
                 >
                   <Download className="w-3 h-3 mr-1" />
                   Export .txt
@@ -276,9 +274,9 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                         style={{ backgroundColor: recipe.targetHex }}
                       />
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{recipe.name}</p>
-                        <p className="text-[10px] text-muted-foreground font-mono">
-                          {recipe.targetHex.toUpperCase()} • {Math.round(recipe.formula.matchScore)}% match
+                        <p className="text-sm font-bold text-foreground truncate">{recipe.name}</p>
+                        <p className="text-[10px] text-muted-foreground font-mono font-bold">
+                          {recipe.targetHex.toUpperCase()} • {Math.round(recipe.formula.matchScore)}% • ΔE {recipe.formula.deltaE.toFixed(1)}
                         </p>
                       </div>
                     </div>
@@ -297,14 +295,14 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                     {recipe.formula.paints.map((paint, i) => (
                       <div key={`${paint.brand}-${paint.code}`} className="flex items-center gap-2 text-xs">
                         <div
-                          className="w-3 h-3 rounded-sm flex-shrink-0"
+                          className="w-3 h-3 rounded-sm flex-shrink-0 border border-gray-300"
                           style={{ backgroundColor: `rgb(${paint.rgb.join(',')})` }}
                         />
-                        <span className="font-mono text-amber">{recipe.formula.ratios[i]}p</span>
-                        <span className="text-muted-foreground truncate">
+                        <span className="font-mono text-primary font-bold">{recipe.formula.ratios[i]}p</span>
+                        <span className="text-foreground truncate">
                           {paint.code} {paint.name}
                         </span>
-                        <span className="text-[9px] text-muted-foreground/60 bg-[oklch(0.18_0.005_285)] px-1 rounded">
+                        <span className="text-[9px] text-muted-foreground bg-secondary px-1 rounded border border-border font-bold">
                           {getBrandShortName(paint.brand)}
                         </span>
                       </div>
@@ -318,11 +316,11 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                         value={noteText}
                         onChange={(e) => setNoteText(e.target.value)}
                         placeholder="Add a note..."
-                        className="bg-[oklch(0.16_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground text-xs h-7"
+                        className="bg-card border-2 border-border text-foreground text-xs h-7"
                         onKeyDown={(e) => e.key === 'Enter' && handleSaveNote(recipe.id)}
                         autoFocus
                       />
-                      <Button size="sm" className="h-7 text-xs bg-amber text-black" onClick={() => handleSaveNote(recipe.id)}>
+                      <Button size="sm" className="h-7 text-xs bg-primary text-primary-foreground font-bold" onClick={() => handleSaveNote(recipe.id)}>
                         OK
                       </Button>
                       <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingNotes(null)}>
@@ -339,7 +337,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                       ) : (
                         <button
                           onClick={() => { setEditingNotes(recipe.id); setNoteText(''); }}
-                          className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground"
+                          className="text-[10px] text-muted-foreground hover:text-foreground font-bold"
                         >
                           + add note
                         </button>
@@ -347,7 +345,7 @@ export default function SavedRecipes({ currentResult }: SavedRecipesProps) {
                     </div>
                   )}
 
-                  <p className="text-[9px] text-muted-foreground/40 font-mono pl-8">
+                  <p className="text-[9px] text-muted-foreground font-mono pl-8">
                     Saved {new Date(recipe.savedAt).toLocaleDateString()}
                   </p>
                 </div>

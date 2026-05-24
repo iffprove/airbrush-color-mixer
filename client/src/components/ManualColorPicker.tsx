@@ -1,6 +1,6 @@
 /**
  * ManualColorPicker Component
- * Allows manual color input via hex code or RGB sliders.
+ * Manual hex/RGB input. Light theme, high-contrast.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -79,7 +79,6 @@ export default function ManualColorPicker({ onColorPick, initialColor }: ManualC
             className="w-20 h-20 rounded-lg paint-chip"
             style={{ backgroundColor: `rgb(${r}, ${g}, ${b})` }}
           />
-          {/* Native color picker overlay */}
           <input
             type="color"
             value={hexValue.toLowerCase()}
@@ -89,14 +88,14 @@ export default function ManualColorPicker({ onColorPick, initialColor }: ManualC
           />
         </div>
         <div className="flex-1 space-y-2">
-          <Label className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
+          <Label className="text-xs text-foreground font-mono uppercase tracking-wider font-bold">
             Hex Code
           </Label>
           <Input
             value={hexInput || hexValue}
             onChange={(e) => handleHexChange(e.target.value)}
             placeholder="#FF6600"
-            className="font-mono text-lg bg-[oklch(0.18_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground"
+            className="font-mono text-lg bg-card border-2 border-border text-foreground font-bold"
           />
         </div>
       </div>
@@ -105,46 +104,46 @@ export default function ManualColorPicker({ onColorPick, initialColor }: ManualC
       <div className="space-y-4">
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Label className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Red</Label>
-            <span className="font-mono text-sm text-foreground">{r}</span>
+            <Label className="text-xs text-foreground font-mono uppercase tracking-wider font-bold">Red</Label>
+            <span className="font-mono text-sm text-foreground font-bold">{r}</span>
           </div>
           <Slider
             value={[r]}
             onValueChange={([v]) => handleSliderChange('r', v)}
             max={255}
             step={1}
-            className="[&_[role=slider]]:bg-red-500 [&_[role=slider]]:border-red-600"
+            className="[&_[role=slider]]:bg-red-600 [&_[role=slider]]:border-red-700"
           />
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Label className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Green</Label>
-            <span className="font-mono text-sm text-foreground">{g}</span>
+            <Label className="text-xs text-foreground font-mono uppercase tracking-wider font-bold">Green</Label>
+            <span className="font-mono text-sm text-foreground font-bold">{g}</span>
           </div>
           <Slider
             value={[g]}
             onValueChange={([v]) => handleSliderChange('g', v)}
             max={255}
             step={1}
-            className="[&_[role=slider]]:bg-green-500 [&_[role=slider]]:border-green-600"
+            className="[&_[role=slider]]:bg-green-600 [&_[role=slider]]:border-green-700"
           />
         </div>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <Label className="text-xs text-muted-foreground font-mono uppercase tracking-wider">Blue</Label>
-            <span className="font-mono text-sm text-foreground">{b}</span>
+            <Label className="text-xs text-foreground font-mono uppercase tracking-wider font-bold">Blue</Label>
+            <span className="font-mono text-sm text-foreground font-bold">{b}</span>
           </div>
           <Slider
             value={[b]}
             onValueChange={([v]) => handleSliderChange('b', v)}
             max={255}
             step={1}
-            className="[&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-600"
+            className="[&_[role=slider]]:bg-blue-600 [&_[role=slider]]:border-blue-700"
           />
         </div>
       </div>
 
-      <p className="text-xs text-muted-foreground text-center">
+      <p className="text-xs text-muted-foreground text-center font-bold">
         Click the color swatch to open the system color picker, or adjust sliders manually
       </p>
     </div>

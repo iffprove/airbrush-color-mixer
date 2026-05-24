@@ -1,14 +1,7 @@
 /**
  * ImageColorPicker Component
- * Allows users to upload/capture a photo and pick a color from it.
- * Features: crosshair overlay, area-average sampling, white-balance calibration.
- * 
- * WB Calibration: User taps a known white/neutral area in the photo.
- * The app computes the offset from pure white (255,255,255) and applies
- * that correction to all subsequent samples. This compensates for phone
- * camera auto-WB shifts (which can swing 10-20 ΔE on reds/oranges).
- * 
- * Design: Workshop Industrial
+ * Photo upload + color sampling with WB calibration.
+ * Light theme, high-contrast, large touch targets.
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
@@ -36,8 +29,7 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
   const [areaMode, setAreaMode] = useState(true);
   const [sampleSize, setSampleSize] = useState(10);
 
-  // White balance calibration
-  const [wbMode, setWbMode] = useState(false); // true = "tap white reference" mode
+  const [wbMode, setWbMode] = useState(false);
   const [wbCorrection, setWbCorrection] = useState<WBCorrection>(null);
   const [wbReferenceColor, setWbReferenceColor] = useState<[number, number, number] | null>(null);
 
@@ -59,7 +51,6 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
 
   useEffect(() => {
     if (!image || !canvasRef.current || !containerRef.current) return;
-
     const canvas = canvasRef.current;
     const container = containerRef.current;
     const ctx = canvas.getContext('2d');
@@ -68,14 +59,11 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const containerWidth = container.clientWidth;
     const containerHeight = Math.min(400, window.innerHeight * 0.45);
     const scale = Math.min(containerWidth / image.width, containerHeight / image.height);
-    
     canvas.width = image.width * scale;
     canvas.height = image.height * scale;
-    
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
   }, [image]);
 
-  /** Get raw (uncorrected) color at a position */
   const getRawColorAtPosition = useCallback((x: number, y: number): [number, number, number] | null => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
@@ -94,25 +82,20 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const endY = Math.min(canvas.height, Math.round(y + size));
     const width = endX - startX;
     const height = endY - startY;
-
     if (width <= 0 || height <= 0) return null;
 
     const imageData = ctx.getImageData(startX, startY, width, height).data;
-    let totalR = 0, totalG = 0, totalB = 0;
-    let count = 0;
-
+    let totalR = 0, totalG = 0, totalB = 0, count = 0;
     for (let i = 0; i < imageData.length; i += 4) {
       totalR += imageData[i];
       totalG += imageData[i + 1];
       totalB += imageData[i + 2];
       count++;
     }
-
     if (count === 0) return null;
     return [Math.round(totalR / count), Math.round(totalG / count), Math.round(totalB / count)];
   }, [areaMode, sampleSize]);
 
-  /** Apply WB correction to a raw color */
   const applyWB = useCallback((raw: [number, number, number]): [number, number, number] => {
     if (!wbCorrection) return raw;
     return [
@@ -128,7 +111,6 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     const raw = getRawColorAtPosition(x, y);
     if (raw) {
       setHoveredColor(wbMode ? raw : applyWB(raw));
@@ -142,13 +124,10 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-
     const raw = getRawColorAtPosition(x, y);
     if (!raw) return;
 
     if (wbMode) {
-      // Calibrating: compute WB correction from this "white" reference
-      // The reference should be white (255,255,255). Compute scale factors.
       const maxChannel = Math.max(raw[0], raw[1], raw[2], 1);
       setWbCorrection({
         rScale: maxChannel / Math.max(raw[0], 1),
@@ -171,7 +150,6 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const rect = canvas.getBoundingClientRect();
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
-
     const raw = getRawColorAtPosition(x, y);
     if (!raw) return;
 
@@ -217,13 +195,13 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     <div className="space-y-4">
       {!image ? (
         <div className="workshop-panel rounded-lg p-6">
-          <div className="border-2 border-dashed border-[oklch(0.35_0.01_285)] rounded-lg p-8 text-center">
+          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-[oklch(0.25_0.005_285)] flex items-center justify-center">
-                <Camera className="w-8 h-8 text-amber" />
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border-2 border-primary/20">
+                <Camera className="w-8 h-8 text-primary" />
               </div>
               <div>
-                <p className="text-foreground font-medium mb-1">Upload or capture a photo</p>
+                <p className="text-foreground font-bold mb-1">Upload or capture a photo</p>
                 <p className="text-muted-foreground text-sm">
                   Take a photo of the surface you want to match
                 </p>
@@ -231,45 +209,32 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
               <div className="flex gap-3 flex-wrap justify-center">
                 <Button
                   onClick={() => cameraInputRef.current?.click()}
-                  className="bg-primary text-primary-foreground hover:bg-amber-dark"
+                  className="bg-primary text-primary-foreground hover:bg-amber-dark h-12 px-6 text-base font-bold"
                 >
-                  <Camera className="w-4 h-4 mr-2" />
+                  <Camera className="w-5 h-5 mr-2" />
                   Take Photo
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-[oklch(0.35_0.01_285)] text-foreground hover:bg-accent"
+                  className="border-2 border-border text-foreground hover:bg-accent h-12 px-6 text-base font-bold"
                 >
-                  <Upload className="w-4 h-4 mr-2" />
+                  <Upload className="w-5 h-5 mr-2" />
                   Upload Image
                 </Button>
               </div>
-              <p className="text-[10px] text-muted-foreground/60 max-w-xs">
-                Tip: Include a white card or paper in your photo for white-balance calibration. This improves colour accuracy significantly.
+              <p className="text-[11px] text-muted-foreground max-w-xs">
+                Tip: Include a white card or paper in your photo for white-balance calibration.
               </p>
             </div>
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={handleFileChange}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+          <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleFileChange} className="hidden" />
         </div>
       ) : (
         <div className="workshop-panel rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground font-mono">
+            <p className="text-sm text-foreground font-mono font-bold">
               {wbMode ? '⚪ TAP A WHITE/NEUTRAL AREA' : 'TAP IMAGE TO SAMPLE COLOR'}
             </p>
             <Button
@@ -283,54 +248,43 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
             </Button>
           </div>
 
-          {/* White Balance Calibration Controls */}
-          <div className="flex items-center gap-2 p-3 rounded-md bg-[oklch(0.14_0.005_285)] border border-[oklch(0.25_0.005_285)]">
-            <CircleDot className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          {/* White Balance Calibration */}
+          <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 border-2 border-blue-200">
+            <CircleDot className="w-4 h-4 text-blue-600 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               {wbCorrection ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-green-400">WB CALIBRATED</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-mono text-green-700 font-bold">WB CALIBRATED</span>
                   <div
-                    className="w-4 h-4 rounded-sm border border-white/20"
+                    className="w-4 h-4 rounded-sm border-2 border-gray-300"
                     style={{ backgroundColor: wbReferenceColor ? `rgb(${wbReferenceColor.join(',')})` : '#fff' }}
-                    title="Reference point sampled"
                   />
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[10px] text-muted-foreground font-mono">
                     R×{wbCorrection.rScale.toFixed(2)} G×{wbCorrection.gScale.toFixed(2)} B×{wbCorrection.bScale.toFixed(2)}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={resetWB}
-                    className="h-5 px-1 text-muted-foreground hover:text-foreground"
-                  >
+                  <Button variant="ghost" size="sm" onClick={resetWB} className="h-5 px-1 text-muted-foreground hover:text-foreground">
                     <RotateCcw className="w-3 h-3" />
                   </Button>
                 </div>
               ) : wbMode ? (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-blue-400 animate-pulse">TAP WHITE AREA NOW...</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setWbMode(false)}
-                    className="h-5 px-2 text-xs text-muted-foreground"
-                  >
+                  <span className="text-xs font-mono text-blue-700 font-bold animate-pulse">TAP WHITE AREA NOW...</span>
+                  <Button variant="ghost" size="sm" onClick={() => setWbMode(false)} className="h-5 px-2 text-xs text-muted-foreground">
                     Cancel
                   </Button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-muted-foreground">White balance:</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] text-muted-foreground font-bold">White balance:</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setWbMode(true)}
-                    className="h-5 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                    className="h-6 px-2 text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 font-bold"
                   >
                     Calibrate
                   </Button>
-                  <span className="text-[10px] text-muted-foreground/50">
+                  <span className="text-[10px] text-muted-foreground">
                     (tap a white/grey area in photo)
                   </span>
                 </div>
@@ -339,25 +293,25 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
           </div>
 
           {/* Sampling mode controls */}
-          <div className="flex items-center gap-4 p-3 rounded-md bg-[oklch(0.16_0.005_285)] border border-[oklch(0.25_0.005_285)]">
+          <div className="flex items-center gap-4 p-3 rounded-md bg-secondary border-2 border-border">
             <div className="flex items-center gap-2">
               {areaMode ? (
-                <Grid3X3 className="w-4 h-4 text-amber" />
+                <Grid3X3 className="w-4 h-4 text-primary" />
               ) : (
                 <Crosshair className="w-4 h-4 text-muted-foreground" />
               )}
-              <Label className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+              <Label className="text-xs font-mono text-foreground whitespace-nowrap font-bold">
                 AREA AVG
               </Label>
               <Switch
                 checked={areaMode}
                 onCheckedChange={setAreaMode}
-                className="data-[state=checked]:bg-amber"
+                className="data-[state=checked]:bg-primary"
               />
             </div>
             {areaMode && (
               <div className="flex items-center gap-2 flex-1 min-w-0">
-                <Label className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                <Label className="text-xs font-mono text-muted-foreground whitespace-nowrap font-bold">
                   SIZE:
                 </Label>
                 <Slider
@@ -368,7 +322,7 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
                   step={1}
                   className="flex-1"
                 />
-                <span className="text-xs font-mono text-amber w-10 text-right">
+                <span className="text-xs font-mono text-primary w-10 text-right font-bold">
                   {sampleSize * 2}px
                 </span>
               </div>
@@ -376,7 +330,7 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
           </div>
 
           {/* Canvas area */}
-          <div ref={containerRef} className="relative overflow-hidden rounded-md bg-black">
+          <div ref={containerRef} className="relative overflow-hidden rounded-md border-2 border-border bg-gray-100">
             <canvas
               ref={canvasRef}
               onMouseMove={handleMouseMove}
@@ -385,11 +339,9 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
               className={`block mx-auto ${wbMode ? 'cursor-cell' : 'cursor-crosshair'}`}
               style={{ maxWidth: '100%' }}
             />
-            {/* WB mode overlay tint */}
             {wbMode && (
-              <div className="absolute inset-0 bg-blue-500/10 pointer-events-none border-2 border-blue-400/30 rounded-md" />
+              <div className="absolute inset-0 bg-blue-500/10 pointer-events-none border-2 border-blue-400/40 rounded-md" />
             )}
-            {/* Crosshair / area overlay */}
             {cursorPos && (
               <div
                 className="pointer-events-none absolute"
@@ -402,24 +354,20 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
               >
                 {areaMode ? (
                   <svg width={crosshairSize} height={crosshairSize} viewBox={`0 0 ${crosshairSize} ${crosshairSize}`}>
-                    <rect
-                      x="2" y="2"
-                      width={crosshairSize - 4} height={crosshairSize - 4}
-                      fill="none"
-                      stroke={wbMode ? '#60a5fa' : 'white'}
-                      strokeWidth="1.5"
-                      strokeDasharray="4 2"
-                      opacity="0.9"
-                    />
-                    <circle cx={crosshairSize / 2} cy={crosshairSize / 2} r="2" fill={wbMode ? '#60a5fa' : 'white'} opacity="0.9" />
+                    <rect x="2" y="2" width={crosshairSize - 4} height={crosshairSize - 4}
+                      fill="none" stroke={wbMode ? '#2563eb' : '#000'} strokeWidth="2" strokeDasharray="4 2" opacity="0.9" />
+                    <rect x="2" y="2" width={crosshairSize - 4} height={crosshairSize - 4}
+                      fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
+                    <circle cx={crosshairSize / 2} cy={crosshairSize / 2} r="2" fill={wbMode ? '#2563eb' : '#000'} opacity="0.9" />
                   </svg>
                 ) : (
                   <svg width="40" height="40" viewBox="0 0 40 40">
-                    <circle cx="20" cy="20" r="12" fill="none" stroke={wbMode ? '#60a5fa' : 'white'} strokeWidth="1.5" opacity="0.8" />
-                    <line x1="20" y1="4" x2="20" y2="14" stroke={wbMode ? '#60a5fa' : 'white'} strokeWidth="1" opacity="0.8" />
-                    <line x1="20" y1="26" x2="20" y2="36" stroke={wbMode ? '#60a5fa' : 'white'} strokeWidth="1" opacity="0.8" />
-                    <line x1="4" y1="20" x2="14" y2="20" stroke={wbMode ? '#60a5fa' : 'white'} strokeWidth="1" opacity="0.8" />
-                    <line x1="26" y1="20" x2="36" y2="20" stroke={wbMode ? '#60a5fa' : 'white'} strokeWidth="1" opacity="0.8" />
+                    <circle cx="20" cy="20" r="12" fill="none" stroke="#000" strokeWidth="2" opacity="0.8" />
+                    <circle cx="20" cy="20" r="12" fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
+                    <line x1="20" y1="4" x2="20" y2="14" stroke="#000" strokeWidth="2" opacity="0.8" />
+                    <line x1="20" y1="26" x2="20" y2="36" stroke="#000" strokeWidth="2" opacity="0.8" />
+                    <line x1="4" y1="20" x2="14" y2="20" stroke="#000" strokeWidth="2" opacity="0.8" />
+                    <line x1="26" y1="20" x2="36" y2="20" stroke="#000" strokeWidth="2" opacity="0.8" />
                   </svg>
                 )}
               </div>
@@ -428,26 +376,24 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
 
           {/* Color info bar */}
           {(hoveredColor || selectedColor) && !wbMode && (
-            <div className="flex items-center gap-3 text-sm font-mono">
+            <div className="flex items-center gap-3 text-sm font-mono p-2 bg-secondary rounded-md border border-border">
               <div
                 className="w-8 h-8 rounded paint-chip"
-                style={{
-                  backgroundColor: `rgb(${(selectedColor || hoveredColor)!.join(',')})`
-                }}
+                style={{ backgroundColor: `rgb(${(selectedColor || hoveredColor)!.join(',')})` }}
               />
-              <span className="text-muted-foreground">
+              <span className="text-foreground font-bold">
                 RGB({(selectedColor || hoveredColor)!.join(', ')})
               </span>
-              <span className="text-amber">
+              <span className="text-primary font-bold">
                 #{(selectedColor || hoveredColor)!.map(c => c.toString(16).padStart(2, '0')).join('').toUpperCase()}
               </span>
               {areaMode && (
-                <span className="text-[10px] text-muted-foreground bg-[oklch(0.18_0.005_285)] px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-muted-foreground bg-background px-1.5 py-0.5 rounded border border-border">
                   {sampleSize * 2}x{sampleSize * 2}px avg
                 </span>
               )}
               {wbCorrection && (
-                <span className="text-[10px] text-green-400 bg-green-900/20 px-1.5 py-0.5 rounded">
+                <span className="text-[10px] text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 font-bold">
                   WB
                 </span>
               )}

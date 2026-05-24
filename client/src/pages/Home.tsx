@@ -1,11 +1,11 @@
 /**
  * Home Page — Airbrush Color Mixer v2
  * 
- * Design: Workshop Industrial
- * - Dark charcoal base with warm amber accents
- * - Chunky card panels stacked like tool-chest drawers
+ * Design: Light, high-contrast workshop theme
+ * - Bright white/warm-grey base for visibility under shop lighting
+ * - Bold dark text and strong orange-amber accents
+ * - Large touch targets for dirty/gloved hands
  * - Monospaced type for paint codes and ratios
- * - Paint swatches that look like physical color chips
  */
 
 import { useState, useCallback } from 'react';
@@ -23,9 +23,6 @@ import { useInventory } from '@/hooks/useInventory';
 import { findMixFormula, MixResult } from '@/lib/colorMixer';
 import { Paint, PaintBrand, PaintCategory } from '@/lib/paintDatabase';
 
-const HERO_IMAGE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663689557676/4ZgWXbNjMZfvXRearFfQHB/hero-workshop-ioxQCiL97J44iDCA378o5Q.webp';
-const MIXING_IMAGE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663689557676/4ZgWXbNjMZfvXRearFfQHB/color-mixing-abstract-cnu7oG5HuCLWYUF5izwuA6.webp';
-
 export default function Home() {
   const [targetColor, setTargetColor] = useState<[number, number, number] | null>(null);
   const [mixResult, setMixResult] = useState<MixResult | null>(null);
@@ -35,7 +32,6 @@ export default function Home() {
   const [showCatalog, setShowCatalog] = useState(false);
   const [showInventory, setShowInventory] = useState(false);
 
-  // Paint inventory hook
   const inventory = useInventory();
 
   const recalculate = useCallback((
@@ -78,7 +74,6 @@ export default function Home() {
     setShowCatalog(false);
   }, [selectedBrands, selectedCategories, inventory.useInventoryOnly, inventory.ownedPaints, recalculate]);
 
-  // Recalculate when inventory toggle changes
   const handleInventoryToggle = useCallback(() => {
     inventory.toggleUseInventoryOnly();
     if (targetColor) {
@@ -89,45 +84,40 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Header */}
-      <header className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-30"
-          style={{ backgroundImage: `url(${HERO_IMAGE})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/60 via-background/80 to-background" />
-        <div className="relative container py-8 sm:py-12">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-lg bg-amber/20 flex items-center justify-center">
-              <Crosshair className="w-5 h-5 text-amber" />
+      {/* Header */}
+      <header className="border-b-2 border-border bg-card">
+        <div className="container py-5 sm:py-6">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border-2 border-primary/30">
+              <Crosshair className="w-5 h-5 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
               Color Mixer
             </h1>
           </div>
-          <p className="text-muted-foreground text-sm sm:text-base max-w-lg">
-            Match any color to airbrush paint formulas from <span className="text-amber font-medium">9 popular brands</span>.
-            Snap a photo or pick a color — get your mixing recipe instantly.
+          <p className="text-muted-foreground text-sm sm:text-base max-w-lg font-medium">
+            Match any color to airbrush paint formulas from <span className="text-primary font-bold">9 brands</span>.
+            Photo → formula → spray.
           </p>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container pb-12 space-y-6">
+      <main className="container py-6 pb-12 space-y-6">
         {/* Input Section */}
         <section>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full grid grid-cols-2 bg-[oklch(0.20_0.005_285)] border border-[oklch(0.30_0.01_285)]">
+            <TabsList className="w-full grid grid-cols-2 bg-secondary border-2 border-border h-12">
               <TabsTrigger
                 value="camera"
-                className="font-mono text-sm data-[state=active]:bg-amber/20 data-[state=active]:text-amber"
+                className="font-mono text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-10"
               >
                 <Camera className="w-4 h-4 mr-2" />
                 Photo
               </TabsTrigger>
               <TabsTrigger
                 value="manual"
-                className="font-mono text-sm data-[state=active]:bg-amber/20 data-[state=active]:text-amber"
+                className="font-mono text-sm font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-10"
               >
                 <Palette className="w-4 h-4 mr-2" />
                 Manual
@@ -160,12 +150,12 @@ export default function Home() {
           <Button
             variant="outline"
             onClick={() => setShowInventory(!showInventory)}
-            className="w-full border-[oklch(0.30_0.01_285)] text-foreground hover:bg-accent font-mono"
+            className="w-full border-2 border-border text-foreground hover:bg-accent font-mono font-bold h-12"
           >
             <Package className="w-4 h-4 mr-2" />
             {showInventory ? 'HIDE' : 'MANAGE'} MY PAINT SHELF
             {inventory.ownedCount > 0 && (
-              <span className="ml-2 text-xs text-amber bg-amber/10 px-2 py-0.5 rounded">
+              <span className="ml-2 text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded font-bold">
                 {inventory.ownedCount} owned
               </span>
             )}
@@ -190,12 +180,12 @@ export default function Home() {
         {mixResult && (
           <section className="animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-4 h-4 text-amber" />
-              <h2 className="font-mono text-sm text-muted-foreground uppercase tracking-wider">
+              <Zap className="w-4 h-4 text-primary" />
+              <h2 className="font-mono text-sm text-foreground uppercase tracking-wider font-bold">
                 MIXING FORMULA
               </h2>
               {inventory.useInventoryOnly && inventory.ownedCount > 0 && (
-                <span className="text-[10px] font-mono text-green-400 bg-green-900/20 px-2 py-0.5 rounded border border-green-700/30">
+                <span className="text-[10px] font-mono text-green-800 bg-green-100 px-2 py-0.5 rounded border border-green-300 font-bold">
                   SHELF ONLY
                 </span>
               )}
@@ -214,7 +204,7 @@ export default function Home() {
           <Button
             variant="outline"
             onClick={() => setShowCatalog(!showCatalog)}
-            className="w-full border-[oklch(0.30_0.01_285)] text-foreground hover:bg-accent font-mono"
+            className="w-full border-2 border-border text-foreground hover:bg-accent font-mono font-bold h-12"
           >
             <BookOpen className="w-4 h-4 mr-2" />
             {showCatalog ? 'HIDE' : 'BROWSE'} PAINT CATALOG
@@ -229,68 +219,60 @@ export default function Home() {
         {/* How It Works */}
         {!mixResult && (
           <section className="workshop-panel rounded-lg p-6">
-            <h2 className="font-mono text-sm text-amber uppercase tracking-wider mb-4">
+            <h2 className="font-mono text-sm text-primary uppercase tracking-wider mb-4 font-bold">
               HOW IT WORKS
             </h2>
             <div className="grid sm:grid-cols-3 gap-6">
               <div className="space-y-2">
-                <div className="w-10 h-10 rounded-lg bg-amber/10 flex items-center justify-center">
-                  <Camera className="w-5 h-5 text-amber" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <Camera className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-medium text-foreground text-sm">1. Capture Color</h3>
+                <h3 className="font-bold text-foreground text-sm">1. Capture Color</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Take a photo of the surface you want to match. Use the white-balance calibration for accurate colour capture.
+                  Take a photo of the surface you want to match. Use white-balance calibration for accurate colour capture.
                 </p>
               </div>
               <div className="space-y-2">
-                <div className="w-10 h-10 rounded-lg bg-amber/10 flex items-center justify-center">
-                  <Crosshair className="w-5 h-5 text-amber" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <Crosshair className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-medium text-foreground text-sm">2. Sample Area</h3>
+                <h3 className="font-bold text-foreground text-sm">2. Sample Area</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Use area-average sampling for textured surfaces, or single-pixel for flat colours. Adjust the sample size for best results.
+                  Use area-average sampling for textured surfaces, or single-pixel for flat colours. Adjust sample size for best results.
                 </p>
               </div>
               <div className="space-y-2">
-                <div className="w-10 h-10 rounded-lg bg-amber/10 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-amber" />
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                  <Zap className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-medium text-foreground text-sm">3. Get Formula</h3>
+                <h3 className="font-bold text-foreground text-sm">3. Get Formula</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   Get a mixing formula with ΔE accuracy rating, ml/drops calculator, and the option to restrict to paints you own.
                 </p>
               </div>
             </div>
             {/* Supported brands */}
-            <div className="mt-6 pt-4 border-t border-[oklch(0.25_0.005_285)]">
-              <p className="text-xs text-muted-foreground font-mono mb-2">SUPPORTED BRANDS:</p>
+            <div className="mt-6 pt-4 border-t-2 border-border">
+              <p className="text-xs text-muted-foreground font-mono mb-2 font-bold">SUPPORTED BRANDS:</p>
               <div className="flex flex-wrap gap-2">
                 {['Createx Wicked', 'Createx Illustration', 'Candy2o', 'Auto-Air', 'Vallejo Model Air', 'Vallejo Game Air', "E'TAC", 'Badger Minitaire', 'Com-Art'].map(name => (
-                  <span key={name} className="text-[10px] font-mono px-2 py-1 rounded bg-[oklch(0.18_0.005_285)] text-muted-foreground border border-[oklch(0.25_0.005_285)]">
+                  <span key={name} className="text-[10px] font-mono px-2 py-1 rounded bg-secondary text-foreground border-2 border-border font-bold">
                     {name}
                   </span>
                 ))}
               </div>
-            </div>
-            {/* Feature image */}
-            <div className="mt-6 rounded-lg overflow-hidden opacity-80">
-              <img
-                src={MIXING_IMAGE}
-                alt="Paint mixing visualization"
-                className="w-full h-32 sm:h-48 object-cover"
-              />
             </div>
           </section>
         )}
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[oklch(0.25_0.005_285)] py-6">
+      <footer className="border-t-2 border-border py-6 bg-card">
         <div className="container">
-          <p className="text-xs text-muted-foreground text-center font-mono">
+          <p className="text-xs text-muted-foreground text-center font-mono font-bold">
             AIRBRUSH COLOR MIXER — Multi-Brand Paint Formula Calculator
           </p>
-          <p className="text-[10px] text-muted-foreground/60 text-center mt-1">
+          <p className="text-[10px] text-muted-foreground/80 text-center mt-1">
             Color values are approximations. Always test mix on scrap material first.
           </p>
         </div>

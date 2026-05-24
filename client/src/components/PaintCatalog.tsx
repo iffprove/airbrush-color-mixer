@@ -1,7 +1,6 @@
 /**
  * PaintCatalog Component
- * Displays paint catalogs organized by brand and category.
- * Users can browse and tap a paint to use it as a target color.
+ * Browse paints by brand/category. Light theme, high-contrast.
  */
 
 import { useState } from 'react';
@@ -30,7 +29,7 @@ function PaintSwatch({ paint, onClick }: { paint: Paint; onClick?: () => void })
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-2 p-2 rounded-md hover:bg-accent transition-colors duration-150 w-full text-left"
+      className="group flex items-center gap-2 p-2.5 rounded-md hover:bg-accent border-2 border-transparent hover:border-border transition-colors duration-150 w-full text-left touch-target"
       title={`${paint.code} — ${paint.name}`}
     >
       <div
@@ -38,7 +37,7 @@ function PaintSwatch({ paint, onClick }: { paint: Paint; onClick?: () => void })
         style={{ backgroundColor: `rgb(${paint.rgb.join(',')})` }}
       />
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-xs text-amber truncate">{paint.code}</p>
+        <p className="font-mono text-xs text-primary font-bold truncate">{paint.code}</p>
         <p className="text-xs text-foreground truncate">{paint.name}</p>
       </div>
     </button>
@@ -54,16 +53,16 @@ export default function PaintCatalog({ onSelectPaint }: PaintCatalogProps) {
     <div className="workshop-panel rounded-lg p-4 space-y-4">
       {/* Brand selector */}
       <div className="flex items-center gap-3">
-        <h3 className="font-mono text-xs text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+        <h3 className="font-mono text-xs text-foreground uppercase tracking-wider whitespace-nowrap font-bold">
           BRAND:
         </h3>
         <Select value={selectedBrand} onValueChange={(v) => setSelectedBrand(v as PaintBrand)}>
-          <SelectTrigger className="bg-[oklch(0.18_0.005_285)] border-[oklch(0.30_0.01_285)] text-foreground font-mono text-sm">
+          <SelectTrigger className="bg-card border-2 border-border text-foreground font-mono text-sm font-bold">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[oklch(0.20_0.005_285)] border-[oklch(0.30_0.01_285)]">
+          <SelectContent className="bg-card border-2 border-border">
             {brands.map(brand => (
-              <SelectItem key={brand.id} value={brand.id} className="font-mono text-sm">
+              <SelectItem key={brand.id} value={brand.id} className="font-mono text-sm font-bold">
                 {brand.shortName}
               </SelectItem>
             ))}
@@ -78,12 +77,12 @@ export default function PaintCatalog({ onSelectPaint }: PaintCatalogProps) {
 
       {/* Category tabs */}
       <Tabs defaultValue={defaultCategory} key={selectedBrand} className="w-full">
-        <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-[oklch(0.18_0.005_285)] p-1 rounded-md">
+        <TabsList className="w-full flex flex-wrap h-auto gap-1 bg-secondary p-1 rounded-md border-2 border-border">
           {brandCategories.map(cat => (
             <TabsTrigger
               key={cat}
               value={cat}
-              className="flex-1 min-w-[60px] text-xs font-mono data-[state=active]:bg-amber/20 data-[state=active]:text-amber"
+              className="flex-1 min-w-[60px] text-xs font-mono font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
             >
               {categoryLabels[cat] || cat}
             </TabsTrigger>
@@ -104,8 +103,8 @@ export default function PaintCatalog({ onSelectPaint }: PaintCatalogProps) {
         ))}
       </Tabs>
 
-      <p className="text-[10px] text-muted-foreground text-center">
-        {getPaintsByBrand(selectedBrand).length} colors available • Tap a swatch to use as target
+      <p className="text-[10px] text-muted-foreground text-center font-bold">
+        {getPaintsByBrand(selectedBrand).length} colors available — Tap a swatch to use as target
       </p>
     </div>
   );
