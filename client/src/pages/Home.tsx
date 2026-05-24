@@ -17,6 +17,7 @@ import ManualColorPicker from '@/components/ManualColorPicker';
 import FormulaDisplay from '@/components/FormulaDisplay';
 import CategoryFilter from '@/components/CategoryFilter';
 import PaintCatalog from '@/components/PaintCatalog';
+import SavedRecipes from '@/components/SavedRecipes';
 import { findMixFormula, MixResult } from '@/lib/colorMixer';
 import { Paint, PaintBrand, PaintCategory } from '@/lib/paintDatabase';
 
@@ -80,7 +81,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base max-w-lg">
-            Match any color to airbrush paint formulas from <span className="text-amber font-medium">7 popular brands</span>.
+            Match any color to airbrush paint formulas from <span className="text-amber font-medium">9 popular brands</span>.
             Snap a photo or pick a color — get your mixing recipe instantly.
           </p>
         </div>
@@ -142,6 +143,11 @@ export default function Home() {
           </section>
         )}
 
+        {/* Saved Recipes */}
+        <section>
+          <SavedRecipes currentResult={mixResult} />
+        </section>
+
         {/* Paint Catalog Toggle */}
         <section>
           <Button
@@ -198,7 +204,7 @@ export default function Home() {
             <div className="mt-6 pt-4 border-t border-[oklch(0.25_0.005_285)]">
               <p className="text-xs text-muted-foreground font-mono mb-2">SUPPORTED BRANDS:</p>
               <div className="flex flex-wrap gap-2">
-                {['Createx Wicked', 'Createx Illustration', 'Vallejo Model Air', 'Vallejo Game Air', "E'TAC", 'Badger Minitaire', 'Com-Art'].map(name => (
+                {['Createx Wicked', 'Createx Illustration', 'Candy2o', 'Auto-Air', 'Vallejo Model Air', 'Vallejo Game Air', "E'TAC", 'Badger Minitaire', 'Com-Art'].map(name => (
                   <span key={name} className="text-[10px] font-mono px-2 py-1 rounded bg-[oklch(0.18_0.005_285)] text-muted-foreground border border-[oklch(0.25_0.005_285)]">
                     {name}
                   </span>

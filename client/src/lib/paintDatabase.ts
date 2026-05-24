@@ -18,6 +18,8 @@ export type PaintCategory = 'transparent' | 'opaque' | 'detail' | 'pearl' | 'met
 export type PaintBrand = 
   | 'createx-wicked'
   | 'createx-illustration'
+  | 'createx-candy2o'
+  | 'createx-autoair'
   | 'vallejo-model-air'
   | 'vallejo-game-air'
   | 'etac'
@@ -35,6 +37,8 @@ export interface BrandInfo {
 export const brands: BrandInfo[] = [
   { id: 'createx-wicked', name: 'Createx Wicked Colors', shortName: 'Wicked', description: 'Multi-surface water-based airbrush paint for automotive & custom work', website: 'createxcolors.com' },
   { id: 'createx-illustration', name: 'Createx Illustration Colors', shortName: 'Illustration', description: 'Ultra-fine pigment airbrush colors for illustration & fine art', website: 'createxcolors.com' },
+  { id: 'createx-candy2o', name: 'Createx Candy2o', shortName: 'Candy2o', description: 'Transparent candy colors for deep, rich custom automotive finishes', website: 'createxcolors.com' },
+  { id: 'createx-autoair', name: 'Createx Auto-Air Colors', shortName: 'Auto-Air', description: 'Automotive airbrush paints — semi-opaque, pearl, metallic & candy', website: 'createxcolors.com' },
   { id: 'vallejo-model-air', name: 'Vallejo Model Air', shortName: 'Model Air', description: 'Airbrush-ready acrylic colors for scale models & military vehicles', website: 'acrylicosvallejo.com' },
   { id: 'vallejo-game-air', name: 'Vallejo Game Air', shortName: 'Game Air', description: 'Airbrush colors for miniatures, wargaming & fantasy models', website: 'acrylicosvallejo.com' },
   { id: 'etac', name: "E'TAC Airbrush Colors", shortName: "E'TAC", description: 'Professional textile & fine art airbrush paints, no clogging', website: 'etacpaints.com' },
@@ -417,10 +421,99 @@ const comArt: Paint[] = [
   { code: '20141', name: 'Transparent Yellow Ochre', brand: 'com-art', category: 'transparent', rgb: [175, 130, 35], opacity: 0.4 },
 ];
 
+// ============ CREATEX CANDY2O ============
+const createxCandy2o: Paint[] = [
+  { code: '4651', name: 'Lemon Yellow', brand: 'createx-candy2o', category: 'transparent', rgb: [255, 230, 0], opacity: 0.3 },
+  { code: '4652', name: 'Yellow', brand: 'createx-candy2o', category: 'transparent', rgb: [255, 200, 0], opacity: 0.3 },
+  { code: '4653', name: 'Gold', brand: 'createx-candy2o', category: 'transparent', rgb: [220, 170, 20], opacity: 0.3 },
+  { code: '4654', name: 'Light Orange', brand: 'createx-candy2o', category: 'transparent', rgb: [255, 150, 0], opacity: 0.3 },
+  { code: '4655', name: 'Orange', brand: 'createx-candy2o', category: 'transparent', rgb: [255, 100, 0], opacity: 0.3 },
+  { code: '4656', name: 'Sunset Orange', brand: 'createx-candy2o', category: 'transparent', rgb: [240, 70, 0], opacity: 0.3 },
+  { code: '4657', name: 'Light Red', brand: 'createx-candy2o', category: 'transparent', rgb: [230, 30, 20], opacity: 0.3 },
+  { code: '4658', name: 'Red', brand: 'createx-candy2o', category: 'transparent', rgb: [200, 10, 20], opacity: 0.3 },
+  { code: '4659', name: 'Blood Red', brand: 'createx-candy2o', category: 'transparent', rgb: [160, 0, 15], opacity: 0.3 },
+  { code: '4660', name: 'Magenta', brand: 'createx-candy2o', category: 'transparent', rgb: [190, 0, 80], opacity: 0.3 },
+  { code: '4661', name: 'Red Violet', brand: 'createx-candy2o', category: 'transparent', rgb: [140, 0, 80], opacity: 0.3 },
+  { code: '4662', name: 'Violet', brand: 'createx-candy2o', category: 'transparent', rgb: [80, 20, 120], opacity: 0.3 },
+  { code: '4663', name: 'Blue Violet', brand: 'createx-candy2o', category: 'transparent', rgb: [50, 20, 130], opacity: 0.3 },
+  { code: '4664', name: 'Deep Blue', brand: 'createx-candy2o', category: 'transparent', rgb: [0, 30, 120], opacity: 0.3 },
+  { code: '4665', name: 'Blue', brand: 'createx-candy2o', category: 'transparent', rgb: [0, 60, 160], opacity: 0.3 },
+  { code: '4666', name: 'Teal', brand: 'createx-candy2o', category: 'transparent', rgb: [0, 100, 120], opacity: 0.3 },
+  { code: '4667', name: 'Blue Green', brand: 'createx-candy2o', category: 'transparent', rgb: [0, 120, 100], opacity: 0.3 },
+  { code: '4668', name: 'Green', brand: 'createx-candy2o', category: 'transparent', rgb: [0, 130, 50], opacity: 0.3 },
+  { code: '4669', name: 'Light Green', brand: 'createx-candy2o', category: 'transparent', rgb: [50, 170, 50], opacity: 0.3 },
+  { code: '4670', name: 'Root Beer', brand: 'createx-candy2o', category: 'transparent', rgb: [100, 50, 10], opacity: 0.3 },
+  { code: '4671', name: 'Cola', brand: 'createx-candy2o', category: 'transparent', rgb: [60, 25, 5], opacity: 0.3 },
+  { code: '4672', name: 'Black', brand: 'createx-candy2o', category: 'transparent', rgb: [15, 15, 15], opacity: 0.3 },
+];
+
+// ============ CREATEX AUTO-AIR COLORS ============
+const createxAutoAir: Paint[] = [
+  // Semi-Opaque (4200 Series)
+  { code: '4201', name: 'White', brand: 'createx-autoair', category: 'opaque', rgb: [255, 255, 255], opacity: 0.85 },
+  { code: '4202', name: 'Jet Black', brand: 'createx-autoair', category: 'opaque', rgb: [10, 10, 10], opacity: 0.85 },
+  { code: '4203', name: 'Flame Yellow', brand: 'createx-autoair', category: 'opaque', rgb: [255, 210, 0], opacity: 0.8 },
+  { code: '4204', name: 'Canary Yellow', brand: 'createx-autoair', category: 'opaque', rgb: [255, 230, 30], opacity: 0.8 },
+  { code: '4205', name: 'Orange', brand: 'createx-autoair', category: 'opaque', rgb: [250, 110, 0], opacity: 0.8 },
+  { code: '4206', name: 'Red', brand: 'createx-autoair', category: 'opaque', rgb: [210, 20, 20], opacity: 0.8 },
+  { code: '4207', name: 'Crimson', brand: 'createx-autoair', category: 'opaque', rgb: [170, 0, 40], opacity: 0.8 },
+  { code: '4208', name: 'Magenta', brand: 'createx-autoair', category: 'opaque', rgb: [190, 0, 90], opacity: 0.8 },
+  { code: '4209', name: 'Violet', brand: 'createx-autoair', category: 'opaque', rgb: [80, 25, 120], opacity: 0.8 },
+  { code: '4210', name: 'Blue', brand: 'createx-autoair', category: 'opaque', rgb: [0, 50, 150], opacity: 0.8 },
+  { code: '4211', name: 'Deep Blue', brand: 'createx-autoair', category: 'opaque', rgb: [0, 30, 100], opacity: 0.8 },
+  { code: '4212', name: 'Teal', brand: 'createx-autoair', category: 'opaque', rgb: [0, 110, 120], opacity: 0.8 },
+  { code: '4213', name: 'Green', brand: 'createx-autoair', category: 'opaque', rgb: [0, 120, 50], opacity: 0.8 },
+  { code: '4214', name: 'Leaf Green', brand: 'createx-autoair', category: 'opaque', rgb: [50, 150, 40], opacity: 0.8 },
+  { code: '4215', name: 'Brown', brand: 'createx-autoair', category: 'opaque', rgb: [100, 55, 20], opacity: 0.8 },
+  { code: '4216', name: 'Tan', brand: 'createx-autoair', category: 'opaque', rgb: [180, 150, 100], opacity: 0.8 },
+  { code: '4217', name: 'Medium Grey', brand: 'createx-autoair', category: 'opaque', rgb: [130, 130, 130], opacity: 0.8 },
+  { code: '4218', name: 'Dark Grey', brand: 'createx-autoair', category: 'opaque', rgb: [70, 70, 70], opacity: 0.85 },
+  // Transparent (4200 Series continued)
+  { code: '4230', name: 'Transparent Yellow', brand: 'createx-autoair', category: 'transparent', rgb: [250, 215, 0], opacity: 0.4 },
+  { code: '4231', name: 'Transparent Orange', brand: 'createx-autoair', category: 'transparent', rgb: [250, 110, 0], opacity: 0.4 },
+  { code: '4232', name: 'Transparent Red', brand: 'createx-autoair', category: 'transparent', rgb: [200, 15, 20], opacity: 0.4 },
+  { code: '4233', name: 'Transparent Violet', brand: 'createx-autoair', category: 'transparent', rgb: [75, 20, 110], opacity: 0.4 },
+  { code: '4234', name: 'Transparent Blue', brand: 'createx-autoair', category: 'transparent', rgb: [0, 50, 150], opacity: 0.4 },
+  { code: '4235', name: 'Transparent Green', brand: 'createx-autoair', category: 'transparent', rgb: [0, 110, 50], opacity: 0.4 },
+  { code: '4236', name: 'Transparent Brown', brand: 'createx-autoair', category: 'transparent', rgb: [100, 50, 10], opacity: 0.4 },
+  // Metallic (4300 Series)
+  { code: '4301', name: 'Metallic Silver', brand: 'createx-autoair', category: 'metallic', rgb: [185, 190, 195], opacity: 0.7 },
+  { code: '4302', name: 'Metallic Gold', brand: 'createx-autoair', category: 'metallic', rgb: [200, 165, 40], opacity: 0.7 },
+  { code: '4303', name: 'Metallic Copper', brand: 'createx-autoair', category: 'metallic', rgb: [180, 100, 50], opacity: 0.7 },
+  { code: '4304', name: 'Metallic Bronze', brand: 'createx-autoair', category: 'metallic', rgb: [160, 120, 50], opacity: 0.7 },
+  { code: '4305', name: 'Metallic Red', brand: 'createx-autoair', category: 'metallic', rgb: [170, 30, 30], opacity: 0.7 },
+  { code: '4306', name: 'Metallic Blue', brand: 'createx-autoair', category: 'metallic', rgb: [30, 60, 150], opacity: 0.7 },
+  { code: '4307', name: 'Metallic Green', brand: 'createx-autoair', category: 'metallic', rgb: [0, 100, 60], opacity: 0.7 },
+  { code: '4308', name: 'Metallic Purple', brand: 'createx-autoair', category: 'metallic', rgb: [80, 20, 120], opacity: 0.7 },
+  { code: '4309', name: 'Metallic Charcoal', brand: 'createx-autoair', category: 'metallic', rgb: [55, 55, 60], opacity: 0.7 },
+  { code: '4310', name: 'Metallic Pewter', brand: 'createx-autoair', category: 'metallic', rgb: [120, 125, 130], opacity: 0.7 },
+  // Pearl (4400 Series)
+  { code: '4401', name: 'Pearl White', brand: 'createx-autoair', category: 'pearl', rgb: [240, 240, 235], opacity: 0.5 },
+  { code: '4402', name: 'Pearl Yellow', brand: 'createx-autoair', category: 'pearl', rgb: [255, 230, 50], opacity: 0.5 },
+  { code: '4403', name: 'Pearl Orange', brand: 'createx-autoair', category: 'pearl', rgb: [240, 120, 20], opacity: 0.5 },
+  { code: '4404', name: 'Pearl Red', brand: 'createx-autoair', category: 'pearl', rgb: [200, 30, 40], opacity: 0.5 },
+  { code: '4405', name: 'Pearl Magenta', brand: 'createx-autoair', category: 'pearl', rgb: [180, 20, 90], opacity: 0.5 },
+  { code: '4406', name: 'Pearl Purple', brand: 'createx-autoair', category: 'pearl', rgb: [80, 20, 140], opacity: 0.5 },
+  { code: '4407', name: 'Pearl Blue', brand: 'createx-autoair', category: 'pearl', rgb: [30, 80, 180], opacity: 0.5 },
+  { code: '4408', name: 'Pearl Teal', brand: 'createx-autoair', category: 'pearl', rgb: [0, 120, 130], opacity: 0.5 },
+  { code: '4409', name: 'Pearl Green', brand: 'createx-autoair', category: 'pearl', rgb: [0, 130, 80], opacity: 0.5 },
+  { code: '4410', name: 'Pearl Lime Green', brand: 'createx-autoair', category: 'pearl', rgb: [100, 200, 50], opacity: 0.5 },
+  { code: '4411', name: 'Pearl Black', brand: 'createx-autoair', category: 'pearl', rgb: [25, 25, 30], opacity: 0.5 },
+  // Fluorescent (4250 Series)
+  { code: '4250', name: 'Fluorescent Yellow', brand: 'createx-autoair', category: 'fluorescent', rgb: [255, 255, 0], opacity: 0.4 },
+  { code: '4251', name: 'Fluorescent Orange', brand: 'createx-autoair', category: 'fluorescent', rgb: [255, 130, 0], opacity: 0.4 },
+  { code: '4252', name: 'Fluorescent Red', brand: 'createx-autoair', category: 'fluorescent', rgb: [255, 30, 30], opacity: 0.4 },
+  { code: '4253', name: 'Fluorescent Pink', brand: 'createx-autoair', category: 'fluorescent', rgb: [255, 50, 150], opacity: 0.4 },
+  { code: '4254', name: 'Fluorescent Blue', brand: 'createx-autoair', category: 'fluorescent', rgb: [0, 100, 255], opacity: 0.4 },
+  { code: '4255', name: 'Fluorescent Green', brand: 'createx-autoair', category: 'fluorescent', rgb: [0, 230, 50], opacity: 0.4 },
+];
+
 // ============ COMBINED DATABASE ============
 export const allPaints: Paint[] = [
   ...createxWicked,
   ...createxIllustration,
+  ...createxCandy2o,
+  ...createxAutoAir,
   ...vallejoModelAir,
   ...vallejoGameAir,
   ...etacColors,
