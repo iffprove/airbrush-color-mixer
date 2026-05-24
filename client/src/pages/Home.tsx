@@ -8,7 +8,7 @@
  * - Paint swatches that look like physical color chips
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Camera, Palette, BookOpen, Crosshair, Zap } from 'lucide-react';
@@ -18,7 +18,7 @@ import FormulaDisplay from '@/components/FormulaDisplay';
 import CategoryFilter from '@/components/CategoryFilter';
 import PaintCatalog from '@/components/PaintCatalog';
 import { findMixFormula, MixResult } from '@/lib/colorMixer';
-import { Paint } from '@/lib/paintDatabase';
+import { Paint, PaintBrand, PaintCategory } from '@/lib/paintDatabase';
 
 const HERO_IMAGE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663689557676/4ZgWXbNjMZfvXRearFfQHB/hero-workshop-ioxQCiL97J44iDCA378o5Q.webp';
 const MIXING_IMAGE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663689557676/4ZgWXbNjMZfvXRearFfQHB/color-mixing-abstract-cnu7oG5HuCLWYUF5izwuA6.webp';
@@ -26,30 +26,40 @@ const MIXING_IMAGE = 'https://d2xsxph8kpxj0f.cloudfront.net/310519663689557676/4
 export default function Home() {
   const [targetColor, setTargetColor] = useState<[number, number, number] | null>(null);
   const [mixResult, setMixResult] = useState<MixResult | null>(null);
-  const [categories, setCategories] = useState<Paint['category'][]>(['transparent', 'opaque', 'detail']);
+  const [selectedBrands, setSelectedBrands] = useState<PaintBrand[]>(['createx-wicked']);
+  const [selectedCategories, setSelectedCategories] = useState<PaintCategory[]>(['transparent', 'opaque', 'detail', 'standard']);
   const [activeTab, setActiveTab] = useState('camera');
   const [showCatalog, setShowCatalog] = useState(false);
 
+  const recalculate = useCallback((r: number, g: number, b: number, brands: PaintBrand[], categories: PaintCategory[]) => {
+    const result = findMixFormula(r, g, b, { brands, categories });
+    setMixResult(result);
+  }, []);
+
   const handleColorPick = useCallback((r: number, g: number, b: number) => {
     setTargetColor([r, g, b]);
-    const result = findMixFormula(r, g, b, { categories });
-    setMixResult(result);
-  }, [categories]);
+    recalculate(r, g, b, selectedBrands, selectedCategories);
+  }, [selectedBrands, selectedCategories, recalculate]);
 
-  const handleCategoryChange = useCallback((newCategories: Paint['category'][]) => {
-    setCategories(newCategories);
+  const handleBrandsChange = useCallback((newBrands: PaintBrand[]) => {
+    setSelectedBrands(newBrands);
     if (targetColor) {
-      const result = findMixFormula(targetColor[0], targetColor[1], targetColor[2], { categories: newCategories });
-      setMixResult(result);
+      recalculate(targetColor[0], targetColor[1], targetColor[2], newBrands, selectedCategories);
     }
-  }, [targetColor]);
+  }, [targetColor, selectedCategories, recalculate]);
+
+  const handleCategoriesChange = useCallback((newCategories: PaintCategory[]) => {
+    setSelectedCategories(newCategories);
+    if (targetColor) {
+      recalculate(targetColor[0], targetColor[1], targetColor[2], selectedBrands, newCategories);
+    }
+  }, [targetColor, selectedBrands, recalculate]);
 
   const handlePaintSelect = useCallback((paint: Paint) => {
     setTargetColor(paint.rgb);
-    const result = findMixFormula(paint.rgb[0], paint.rgb[1], paint.rgb[2], { categories });
-    setMixResult(result);
+    recalculate(paint.rgb[0], paint.rgb[1], paint.rgb[2], selectedBrands, selectedCategories);
     setShowCatalog(false);
-  }, [categories]);
+  }, [selectedBrands, selectedCategories, recalculate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +80,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-muted-foreground text-sm sm:text-base max-w-lg">
-            Match any color to <span className="text-amber font-medium">Createx Wicked</span> paint formulas.
+            Match any color to airbrush paint formulas from <span className="text-amber font-medium">7 popular brands</span>.
             Snap a photo or pick a color — get your mixing recipe instantly.
           </p>
         </div>
@@ -109,9 +119,14 @@ export default function Home() {
           </Tabs>
         </section>
 
-        {/* Category Filter */}
+        {/* Brand & Category Filter */}
         <section>
-          <CategoryFilter selected={categories} onChange={handleCategoryChange} />
+          <CategoryFilter
+            selectedBrands={selectedBrands}
+            selectedCategories={selectedCategories}
+            onBrandsChange={handleBrandsChange}
+            onCategoriesChange={handleCategoriesChange}
+          />
         </section>
 
         {/* Results Section */}
@@ -175,8 +190,19 @@ export default function Home() {
                 </div>
                 <h3 className="font-medium text-foreground text-sm">3. Get Formula</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Instantly receive a mixing formula with exact Createx Wicked paint codes and ratios by volume.
+                  Instantly receive a mixing formula with exact paint codes and ratios by volume from your selected brands.
                 </p>
+              </div>
+            </div>
+            {/* Supported brands */}
+            <div className="mt-6 pt-4 border-t border-[oklch(0.25_0.005_285)]">
+              <p className="text-xs text-muted-foreground font-mono mb-2">SUPPORTED BRANDS:</p>
+              <div className="flex flex-wrap gap-2">
+                {['Createx Wicked', 'Createx Illustration', 'Vallejo Model Air', 'Vallejo Game Air', "E'TAC", 'Badger Minitaire', 'Com-Art'].map(name => (
+                  <span key={name} className="text-[10px] font-mono px-2 py-1 rounded bg-[oklch(0.18_0.005_285)] text-muted-foreground border border-[oklch(0.25_0.005_285)]">
+                    {name}
+                  </span>
+                ))}
               </div>
             </div>
             {/* Feature image */}
@@ -195,7 +221,7 @@ export default function Home() {
       <footer className="border-t border-[oklch(0.25_0.005_285)] py-6">
         <div className="container">
           <p className="text-xs text-muted-foreground text-center font-mono">
-            AIRBRUSH COLOR MIXER — Createx Wicked Colors Formula Calculator
+            AIRBRUSH COLOR MIXER — Multi-Brand Paint Formula Calculator
           </p>
           <p className="text-[10px] text-muted-foreground/60 text-center mt-1">
             Color values are approximations. Always test mix on scrap material first.

@@ -1,15 +1,19 @@
 /**
  * FormulaDisplay Component
  * Shows the paint mixing formula with visual ratio bars and paint details.
- * Styled like a workshop work-order / instruction card.
+ * Now shows brand info for each paint in multi-brand mode.
  */
 
 import { MixFormula, MixResult } from '@/lib/colorMixer';
-import { rgbToHex } from '@/lib/paintDatabase';
+import { brands } from '@/lib/paintDatabase';
 import { Beaker, Check, AlertTriangle } from 'lucide-react';
 
 interface FormulaDisplayProps {
   result: MixResult;
+}
+
+function getBrandShortName(brandId: string): string {
+  return brands.find(b => b.id === brandId)?.shortName || brandId;
 }
 
 function MatchBadge({ score }: { score: number }) {
@@ -71,8 +75,8 @@ function FormulaCard({ formula, index }: { formula: MixFormula; index: number })
       {/* Paint list with ratio bars */}
       <div className="space-y-3">
         {formula.paints.map((paint, i) => (
-          <div key={paint.code} className="space-y-1">
-            <div className="flex items-center justify-between">
+          <div key={`${paint.brand}-${paint.code}`} className="space-y-1">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <div className="flex items-center gap-2">
                 <div
                   className="w-5 h-5 rounded-sm paint-chip flex-shrink-0"
@@ -80,6 +84,9 @@ function FormulaCard({ formula, index }: { formula: MixFormula; index: number })
                 />
                 <span className="font-mono text-sm text-amber">{paint.code}</span>
                 <span className="text-sm text-foreground">{paint.name}</span>
+                <span className="text-[10px] text-muted-foreground bg-[oklch(0.22_0.005_285)] px-1.5 py-0.5 rounded font-mono">
+                  {getBrandShortName(paint.brand)}
+                </span>
               </div>
               <span className="font-mono text-sm text-muted-foreground">
                 {formula.ratios[i]} {formula.ratios[i] === 1 ? 'part' : 'parts'} ({formula.percentages[i]}%)
@@ -114,7 +121,7 @@ export default function FormulaDisplay({ result }: FormulaDisplayProps) {
   if (!result.formulas.length) {
     return (
       <div className="workshop-panel rounded-lg p-6 text-center">
-        <p className="text-muted-foreground">No formula found. Try a different color.</p>
+        <p className="text-muted-foreground">No formula found. Try a different color or enable more brands/categories.</p>
       </div>
     );
   }
@@ -142,8 +149,8 @@ export default function FormulaDisplay({ result }: FormulaDisplayProps) {
       <div className="px-4 py-3 rounded-lg bg-[oklch(0.18_0.005_285)] border border-[oklch(0.25_0.005_285)]">
         <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="text-amber font-mono">TIP:</span> Start with the lightest color and gradually add darker colors.
-          Mix small test batches first. Wicked Colors are transparent — layer multiple coats for full coverage.
-          Use W030 Opaque White as a base for lighter colors.
+          Mix small test batches first. When mixing across brands, ensure compatibility — water-based paints can generally be intermixed.
+          Always test on scrap material before committing to the final piece.
         </p>
       </div>
     </div>

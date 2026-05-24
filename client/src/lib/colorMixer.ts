@@ -1,17 +1,19 @@
 /**
- * Color Mixing Algorithm for Createx Wicked Paints
+ * Color Mixing Algorithm — Multi-Brand Support
  * 
  * Uses a weighted subtractive color mixing approach in CIELAB color space
  * for perceptually accurate color matching. The algorithm finds the best
- * combination of 1-4 paints that approximates the target color.
+ * combination of 1-3 paints that approximates the target color.
+ * 
+ * Supports: Createx Wicked, Createx Illustration, Vallejo Model Air,
+ * Vallejo Game Air, E'TAC, Badger Minitaire, Com-Art
  */
 
-import { Paint, wickedColors } from './paintDatabase';
+import { Paint, PaintBrand, PaintCategory, allPaints, getPaintsByBrand } from './paintDatabase';
 
 // ============ Color Space Conversions ============
 
 function rgbToLab(r: number, g: number, b: number): [number, number, number] {
-  // RGB to XYZ (sRGB D65)
   let rr = r / 255;
   let gg = g / 255;
   let bb = b / 255;
@@ -67,44 +69,34 @@ function labToRgb(L: number, a: number, b: number): [number, number, number] {
   ];
 }
 
-// CIEDE2000 color difference (simplified)
+// CIE76 color difference
 function deltaE(lab1: [number, number, number], lab2: [number, number, number]): number {
   const [L1, a1, b1] = lab1;
   const [L2, a2, b2] = lab2;
   const dL = L1 - L2;
   const da = a1 - a2;
   const db = b1 - b2;
-  // CIE76 formula (simpler, good enough for our use case)
   return Math.sqrt(dL * dL + da * da + db * db);
 }
 
 // ============ Subtractive Mixing ============
 
-/**
- * Mix paints subtractively using weighted average in LAB space.
- * This is a simplified model that works well for opaque/semi-opaque paints.
- */
 function mixPaintsLab(paints: Paint[], ratios: number[]): [number, number, number] {
   const total = ratios.reduce((s, r) => s + r, 0);
   if (total === 0) return [0, 0, 0];
 
   const normalizedRatios = ratios.map(r => r / total);
-
-  // Convert all paints to LAB
   const labs = paints.map(p => rgbToLab(p.rgb[0], p.rgb[1], p.rgb[2]));
 
-  // Weighted average in LAB space (approximation of subtractive mixing)
   let L = 0, a = 0, b = 0;
   for (let i = 0; i < labs.length; i++) {
-    // Weight darker colors more heavily (subtractive behavior)
     const darknessWeight = 1 + (1 - labs[i][0] / 100) * 0.3;
     const effectiveRatio = normalizedRatios[i] * darknessWeight;
-    L += labs[i][0] * normalizedRatios[i]; // Lightness mixes linearly
+    L += labs[i][0] * normalizedRatios[i];
     a += labs[i][1] * effectiveRatio;
     b += labs[i][2] * effectiveRatio;
   }
 
-  // Normalize a and b back
   const totalEffective = normalizedRatios.reduce((s, r, i) => {
     const darknessWeight = 1 + (1 - labs[i][0] / 100) * 0.3;
     return s + r * darknessWeight;
@@ -115,25 +107,17 @@ function mixPaintsLab(paints: Paint[], ratios: number[]): [number, number, numbe
   return [L, a, b];
 }
 
-function mixedColorRgb(paints: Paint[], ratios: number[]): [number, number, number] {
-  const lab = mixPaintsLab(paints, ratios);
-  return labToRgb(lab[0], lab[1], lab[2]);
-}
-
 // ============ Formula Finding ============
 
 export interface MixFormula {
   paints: Paint[];
-  ratios: number[]; // parts (e.g., [3, 2, 1] means 3:2:1)
-  percentages: number[]; // percentage of each paint
+  ratios: number[];
+  percentages: number[];
   resultRgb: [number, number, number];
-  matchScore: number; // 0-100, higher is better
-  deltaE: number; // color difference (lower is better)
+  matchScore: number;
+  deltaE: number;
 }
 
-/**
- * Find the best single paint match
- */
 function findBestSingle(targetLab: [number, number, number], availablePaints: Paint[]): MixFormula | null {
   let bestPaint: Paint | null = null;
   let bestDelta = Infinity;
@@ -159,9 +143,6 @@ function findBestSingle(targetLab: [number, number, number], availablePaints: Pa
   };
 }
 
-/**
- * Find the best two-paint mix
- */
 function findBestPair(targetLab: [number, number, number], availablePaints: Paint[]): MixFormula | null {
   let bestFormula: MixFormula | null = null;
   let bestDelta = Infinity;
@@ -198,9 +179,6 @@ function findBestPair(targetLab: [number, number, number], availablePaints: Pain
   return bestFormula;
 }
 
-/**
- * Find the best three-paint mix
- */
 function findBestTriple(targetLab: [number, number, number], availablePaints: Paint[]): MixFormula | null {
   let bestFormula: MixFormula | null = null;
   let bestDelta = Infinity;
@@ -212,7 +190,7 @@ function findBestTriple(targetLab: [number, number, number], availablePaints: Pa
       delta: deltaE(targetLab, rgbToLab(p.rgb[0], p.rgb[1], p.rgb[2]))
     }))
     .sort((a, b) => a.delta - b.delta)
-    .slice(0, 15) // Top 15 closest paints
+    .slice(0, 15)
     .map(c => c.paint);
 
   const steps = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7];
@@ -269,24 +247,30 @@ export interface MixResult {
   bestFormula: MixFormula;
 }
 
+export interface MixOptions {
+  brands?: PaintBrand[];
+  categories?: PaintCategory[];
+  maxPaints?: number;
+}
+
 /**
- * Main function: Given a target RGB color, find the best mixing formulas
- * using Createx Wicked paints.
+ * Main function: Given a target RGB color, find the best mixing formulas.
+ * Supports filtering by brand and category.
  */
 export function findMixFormula(
   targetR: number,
   targetG: number,
   targetB: number,
-  options?: {
-    categories?: Paint['category'][];
-    maxPaints?: number;
-  }
+  options?: MixOptions
 ): MixResult {
-  const categories = options?.categories || ['transparent', 'opaque', 'detail'];
+  const selectedBrands = options?.brands || ['createx-wicked'];
+  const categories = options?.categories || ['transparent', 'opaque', 'detail', 'standard'];
   const maxPaints = options?.maxPaints || 3;
 
-  // Filter available paints by category
-  const availablePaints = wickedColors.filter(p => categories.includes(p.category));
+  // Filter available paints by brand and category
+  const availablePaints = allPaints.filter(
+    p => selectedBrands.includes(p.brand) && categories.includes(p.category)
+  );
 
   const targetLab = rgbToLab(targetR, targetG, targetB);
   const targetHex = '#' + [targetR, targetG, targetB].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -298,13 +282,13 @@ export function findMixFormula(
   if (single) formulas.push(single);
 
   // Find best pair
-  if (maxPaints >= 2) {
+  if (maxPaints >= 2 && availablePaints.length >= 2) {
     const pair = findBestPair(targetLab, availablePaints);
     if (pair) formulas.push(pair);
   }
 
   // Find best triple
-  if (maxPaints >= 3) {
+  if (maxPaints >= 3 && availablePaints.length >= 3) {
     const triple = findBestTriple(targetLab, availablePaints);
     if (triple) formulas.push(triple);
   }
