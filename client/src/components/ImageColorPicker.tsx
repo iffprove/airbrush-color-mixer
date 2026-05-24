@@ -1,11 +1,18 @@
 /**
  * ImageColorPicker Component
- * Photo upload + color sampling with WB calibration.
+ * Photo upload + color sampling with TWO-POINT calibration.
+ * 
+ * Calibration math:
+ *   1. Gamma-decode sampled RGB to linear (sRGB gamma)
+ *   2. corrected_linear = (sample_linear - black_ref_linear) / (white_ref_linear - black_ref_linear)
+ *   3. Gamma-encode back to sRGB
+ * 
+ * This corrects both colour cast AND exposure non-linearity.
  * Light theme, high-contrast, large touch targets.
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Camera, Upload, X, Grid3X3, Crosshair, CircleDot, RotateCcw } from 'lucide-react';
+import { Camera, Upload, X, Grid3X3, Crosshair, CircleDot, RotateCcw, AlertTriangle, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -15,7 +22,27 @@ interface ImageColorPickerProps {
   onColorPick: (r: number, g: number, b: number) => void;
 }
 
-type WBCorrection = { rScale: number; gScale: number; bScale: number } | null;
+// sRGB gamma decode: sRGB [0-255] → linear [0-1]
+function srgbToLinear(c: number): number {
+  const s = c / 255;
+  return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+}
+
+// sRGB gamma encode: linear [0-1] → sRGB [0-255]
+function linearToSrgb(c: number): number {
+  const clamped = Math.max(0, Math.min(1, c));
+  const s = clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * Math.pow(clamped, 1 / 2.4) - 0.055;
+  return Math.round(s * 255);
+}
+
+interface CalibrationData {
+  whiteLinear: [number, number, number];
+  blackLinear: [number, number, number];
+  whiteRgb: [number, number, number];
+  blackRgb: [number, number, number];
+}
+
+type CalibrationStep = 'none' | 'awaiting-white' | 'awaiting-black' | 'calibrated';
 
 export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,9 +56,9 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
   const [areaMode, setAreaMode] = useState(true);
   const [sampleSize, setSampleSize] = useState(10);
 
-  const [wbMode, setWbMode] = useState(false);
-  const [wbCorrection, setWbCorrection] = useState<WBCorrection>(null);
-  const [wbReferenceColor, setWbReferenceColor] = useState<[number, number, number] | null>(null);
+  // Two-point calibration state
+  const [calStep, setCalStep] = useState<CalibrationStep>('none');
+  const [calData, setCalData] = useState<CalibrationData | null>(null);
 
   const loadImage = useCallback((file: File) => {
     const reader = new FileReader();
@@ -40,9 +67,8 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
       img.onload = () => {
         setImage(img);
         setSelectedColor(null);
-        setWbCorrection(null);
-        setWbReferenceColor(null);
-        setWbMode(false);
+        setCalStep('none');
+        setCalData(null);
       };
       img.src = e.target?.result as string;
     };
@@ -96,14 +122,29 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     return [Math.round(totalR / count), Math.round(totalG / count), Math.round(totalB / count)];
   }, [areaMode, sampleSize]);
 
-  const applyWB = useCallback((raw: [number, number, number]): [number, number, number] => {
-    if (!wbCorrection) return raw;
-    return [
-      Math.max(0, Math.min(255, Math.round(raw[0] * wbCorrection.rScale))),
-      Math.max(0, Math.min(255, Math.round(raw[1] * wbCorrection.gScale))),
-      Math.max(0, Math.min(255, Math.round(raw[2] * wbCorrection.bScale))),
-    ];
-  }, [wbCorrection]);
+  // Two-point calibration correction
+  const applyCalibration = useCallback((raw: [number, number, number]): [number, number, number] => {
+    if (!calData) return raw;
+
+    const rLin = srgbToLinear(raw[0]);
+    const gLin = srgbToLinear(raw[1]);
+    const bLin = srgbToLinear(raw[2]);
+
+    const wR = calData.whiteLinear[0], bR = calData.blackLinear[0];
+    const wG = calData.whiteLinear[1], bG = calData.blackLinear[1];
+    const wB = calData.whiteLinear[2], bB = calData.blackLinear[2];
+
+    // Avoid division by zero
+    const rangeR = Math.max(wR - bR, 0.001);
+    const rangeG = Math.max(wG - bG, 0.001);
+    const rangeB = Math.max(wB - bB, 0.001);
+
+    const corrR = (rLin - bR) / rangeR;
+    const corrG = (gLin - bG) / rangeG;
+    const corrB = (bLin - bB) / rangeB;
+
+    return [linearToSrgb(corrR), linearToSrgb(corrG), linearToSrgb(corrB)];
+  }, [calData]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -113,10 +154,11 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const y = e.clientY - rect.top;
     const raw = getRawColorAtPosition(x, y);
     if (raw) {
-      setHoveredColor(wbMode ? raw : applyWB(raw));
+      const isCalibrating = calStep === 'awaiting-white' || calStep === 'awaiting-black';
+      setHoveredColor(isCalibrating ? raw : applyCalibration(raw));
       setCursorPos({ x, y });
     }
-  }, [getRawColorAtPosition, applyWB, wbMode]);
+  }, [getRawColorAtPosition, applyCalibration, calStep]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -127,21 +169,31 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const raw = getRawColorAtPosition(x, y);
     if (!raw) return;
 
-    if (wbMode) {
-      const maxChannel = Math.max(raw[0], raw[1], raw[2], 1);
-      setWbCorrection({
-        rScale: maxChannel / Math.max(raw[0], 1),
-        gScale: maxChannel / Math.max(raw[1], 1),
-        bScale: maxChannel / Math.max(raw[2], 1),
-      });
-      setWbReferenceColor(raw);
-      setWbMode(false);
+    if (calStep === 'awaiting-white') {
+      // Store white reference and move to black
+      const wLin: [number, number, number] = [srgbToLinear(raw[0]), srgbToLinear(raw[1]), srgbToLinear(raw[2])];
+      setCalData(prev => ({
+        whiteLinear: wLin,
+        blackLinear: prev?.blackLinear || [0, 0, 0],
+        whiteRgb: raw,
+        blackRgb: prev?.blackRgb || [0, 0, 0],
+      }));
+      setCalStep('awaiting-black');
+    } else if (calStep === 'awaiting-black') {
+      // Store black reference and complete calibration
+      const bLin: [number, number, number] = [srgbToLinear(raw[0]), srgbToLinear(raw[1]), srgbToLinear(raw[2])];
+      setCalData(prev => prev ? {
+        ...prev,
+        blackLinear: bLin,
+        blackRgb: raw,
+      } : null);
+      setCalStep('calibrated');
     } else {
-      const corrected = applyWB(raw);
+      const corrected = applyCalibration(raw);
       setSelectedColor(corrected);
       onColorPick(corrected[0], corrected[1], corrected[2]);
     }
-  }, [getRawColorAtPosition, applyWB, wbMode, onColorPick]);
+  }, [getRawColorAtPosition, applyCalibration, calStep, onColorPick]);
 
   const handleTouch = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
     const touch = e.changedTouches[0];
@@ -153,21 +205,29 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     const raw = getRawColorAtPosition(x, y);
     if (!raw) return;
 
-    if (wbMode) {
-      const maxChannel = Math.max(raw[0], raw[1], raw[2], 1);
-      setWbCorrection({
-        rScale: maxChannel / Math.max(raw[0], 1),
-        gScale: maxChannel / Math.max(raw[1], 1),
-        bScale: maxChannel / Math.max(raw[2], 1),
-      });
-      setWbReferenceColor(raw);
-      setWbMode(false);
+    if (calStep === 'awaiting-white') {
+      const wLin: [number, number, number] = [srgbToLinear(raw[0]), srgbToLinear(raw[1]), srgbToLinear(raw[2])];
+      setCalData(prev => ({
+        whiteLinear: wLin,
+        blackLinear: prev?.blackLinear || [0, 0, 0],
+        whiteRgb: raw,
+        blackRgb: prev?.blackRgb || [0, 0, 0],
+      }));
+      setCalStep('awaiting-black');
+    } else if (calStep === 'awaiting-black') {
+      const bLin: [number, number, number] = [srgbToLinear(raw[0]), srgbToLinear(raw[1]), srgbToLinear(raw[2])];
+      setCalData(prev => prev ? {
+        ...prev,
+        blackLinear: bLin,
+        blackRgb: raw,
+      } : null);
+      setCalStep('calibrated');
     } else {
-      const corrected = applyWB(raw);
+      const corrected = applyCalibration(raw);
       setSelectedColor(corrected);
       onColorPick(corrected[0], corrected[1], corrected[2]);
     }
-  }, [getRawColorAtPosition, applyWB, wbMode, onColorPick]);
+  }, [getRawColorAtPosition, applyCalibration, calStep, onColorPick]);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -179,16 +239,21 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
     setSelectedColor(null);
     setHoveredColor(null);
     setCursorPos(null);
-    setWbCorrection(null);
-    setWbReferenceColor(null);
-    setWbMode(false);
+    setCalStep('none');
+    setCalData(null);
   }, []);
 
-  const resetWB = useCallback(() => {
-    setWbCorrection(null);
-    setWbReferenceColor(null);
+  const resetCalibration = useCallback(() => {
+    setCalStep('none');
+    setCalData(null);
   }, []);
 
+  const startCalibration = useCallback(() => {
+    setCalStep('awaiting-white');
+    setCalData(null);
+  }, []);
+
+  const isCalibrating = calStep === 'awaiting-white' || calStep === 'awaiting-black';
   const crosshairSize = areaMode ? sampleSize * 2 + 4 : 40;
 
   return (
@@ -224,7 +289,7 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground max-w-xs">
-                Tip: Include a white card or paper in your photo for white-balance calibration.
+                Tip: Place a calibration card (white + black patches) next to the surface for accurate color capture.
               </p>
             </div>
           </div>
@@ -235,7 +300,10 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
         <div className="workshop-panel rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm text-foreground font-mono font-bold">
-              {wbMode ? '⚪ TAP A WHITE/NEUTRAL AREA' : 'TAP IMAGE TO SAMPLE COLOR'}
+              {calStep === 'awaiting-white' && '⬜ TAP THE WHITE PATCH'}
+              {calStep === 'awaiting-black' && '⬛ TAP THE BLACK PATCH'}
+              {calStep === 'none' && 'TAP IMAGE TO SAMPLE COLOR'}
+              {calStep === 'calibrated' && 'TAP IMAGE TO SAMPLE COLOR'}
             </p>
             <Button
               variant="ghost"
@@ -248,47 +316,84 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
             </Button>
           </div>
 
-          {/* White Balance Calibration */}
-          <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 border-2 border-blue-200">
-            <CircleDot className="w-4 h-4 text-blue-600 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              {wbCorrection ? (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs font-mono text-green-700 font-bold">WB CALIBRATED</span>
-                  <div
-                    className="w-4 h-4 rounded-sm border-2 border-gray-300"
-                    style={{ backgroundColor: wbReferenceColor ? `rgb(${wbReferenceColor.join(',')})` : '#fff' }}
-                  />
-                  <span className="text-[10px] text-muted-foreground font-mono">
-                    R×{wbCorrection.rScale.toFixed(2)} G×{wbCorrection.gScale.toFixed(2)} B×{wbCorrection.bScale.toFixed(2)}
-                  </span>
-                  <Button variant="ghost" size="sm" onClick={resetWB} className="h-5 px-1 text-muted-foreground hover:text-foreground">
-                    <RotateCcw className="w-3 h-3" />
-                  </Button>
-                </div>
-              ) : wbMode ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-mono text-blue-700 font-bold animate-pulse">TAP WHITE AREA NOW...</span>
-                  <Button variant="ghost" size="sm" onClick={() => setWbMode(false)} className="h-5 px-2 text-xs text-muted-foreground">
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] text-muted-foreground font-bold">White balance:</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setWbMode(true)}
-                    className="h-6 px-2 text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 font-bold"
-                  >
-                    Calibrate
-                  </Button>
-                  <span className="text-[10px] text-muted-foreground">
-                    (tap a white/grey area in photo)
-                  </span>
-                </div>
-              )}
+          {/* Two-Point Calibration Panel */}
+          <div className={`p-3 rounded-md border-2 ${
+            calStep === 'calibrated' ? 'bg-green-50 border-green-300' :
+            isCalibrating ? 'bg-blue-50 border-blue-300' :
+            'bg-secondary border-border'
+          }`}>
+            <div className="flex items-start gap-2">
+              <CircleDot className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                calStep === 'calibrated' ? 'text-green-700' :
+                isCalibrating ? 'text-blue-600' : 'text-muted-foreground'
+              }`} />
+              <div className="flex-1 min-w-0">
+                {calStep === 'calibrated' && calData && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono text-green-800 font-bold">2-POINT CALIBRATED</span>
+                      <div className="flex items-center gap-1">
+                        <div className="w-4 h-4 rounded-sm border-2 border-gray-300"
+                          style={{ backgroundColor: `rgb(${calData.whiteRgb.join(',')})` }}
+                          title="White reference" />
+                        <span className="text-[9px] text-muted-foreground">W</span>
+                        <div className="w-4 h-4 rounded-sm border-2 border-gray-300"
+                          style={{ backgroundColor: `rgb(${calData.blackRgb.join(',')})` }}
+                          title="Black reference" />
+                        <span className="text-[9px] text-muted-foreground">B</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={resetCalibration}
+                        className="h-5 px-1 text-muted-foreground hover:text-foreground">
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-green-700">
+                      Color cast and exposure corrected. Sampling is now calibrated.
+                    </p>
+                  </div>
+                )}
+                {calStep === 'awaiting-white' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono text-blue-800 font-bold animate-pulse">
+                      STEP 1/2: TAP WHITE PATCH
+                    </span>
+                    <Button variant="ghost" size="sm" onClick={resetCalibration}
+                      className="h-5 px-2 text-xs text-muted-foreground">Cancel</Button>
+                  </div>
+                )}
+                {calStep === 'awaiting-black' && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-blue-800 font-bold animate-pulse">
+                        STEP 2/2: TAP BLACK PATCH
+                      </span>
+                      <Button variant="ghost" size="sm" onClick={resetCalibration}
+                        className="h-5 px-2 text-xs text-muted-foreground">Cancel</Button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-blue-700">White captured:</span>
+                      <div className="w-3 h-3 rounded-sm border border-gray-300"
+                        style={{ backgroundColor: calData ? `rgb(${calData.whiteRgb.join(',')})` : '#fff' }} />
+                    </div>
+                  </div>
+                )}
+                {calStep === 'none' && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-foreground font-bold">Calibration:</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={startCalibration}
+                      className="h-6 px-2 text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 font-bold"
+                    >
+                      Start 2-Point Cal
+                    </Button>
+                    <span className="text-[10px] text-muted-foreground">
+                      (white patch → black patch → sample)
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -336,11 +441,13 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
               onMouseMove={handleMouseMove}
               onClick={handleClick}
               onTouchEnd={handleTouch}
-              className={`block mx-auto ${wbMode ? 'cursor-cell' : 'cursor-crosshair'}`}
+              className={`block mx-auto ${isCalibrating ? 'cursor-cell' : 'cursor-crosshair'}`}
               style={{ maxWidth: '100%' }}
             />
-            {wbMode && (
-              <div className="absolute inset-0 bg-blue-500/10 pointer-events-none border-2 border-blue-400/40 rounded-md" />
+            {isCalibrating && (
+              <div className={`absolute inset-0 pointer-events-none border-2 rounded-md ${
+                calStep === 'awaiting-white' ? 'bg-blue-500/5 border-blue-400/40' : 'bg-gray-900/5 border-gray-600/40'
+              }`} />
             )}
             {cursorPos && (
               <div
@@ -355,10 +462,10 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
                 {areaMode ? (
                   <svg width={crosshairSize} height={crosshairSize} viewBox={`0 0 ${crosshairSize} ${crosshairSize}`}>
                     <rect x="2" y="2" width={crosshairSize - 4} height={crosshairSize - 4}
-                      fill="none" stroke={wbMode ? '#2563eb' : '#000'} strokeWidth="2" strokeDasharray="4 2" opacity="0.9" />
+                      fill="none" stroke={isCalibrating ? '#2563eb' : '#000'} strokeWidth="2" strokeDasharray="4 2" opacity="0.9" />
                     <rect x="2" y="2" width={crosshairSize - 4} height={crosshairSize - 4}
                       fill="none" stroke="white" strokeWidth="1" opacity="0.5" />
-                    <circle cx={crosshairSize / 2} cy={crosshairSize / 2} r="2" fill={wbMode ? '#2563eb' : '#000'} opacity="0.9" />
+                    <circle cx={crosshairSize / 2} cy={crosshairSize / 2} r="2" fill={isCalibrating ? '#2563eb' : '#000'} opacity="0.9" />
                   </svg>
                 ) : (
                   <svg width="40" height="40" viewBox="0 0 40 40">
@@ -375,7 +482,7 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
           </div>
 
           {/* Color info bar */}
-          {(hoveredColor || selectedColor) && !wbMode && (
+          {(hoveredColor || selectedColor) && !isCalibrating && (
             <div className="flex items-center gap-3 text-sm font-mono p-2 bg-secondary rounded-md border border-border">
               <div
                 className="w-8 h-8 rounded paint-chip"
@@ -392,11 +499,22 @@ export default function ImageColorPicker({ onColorPick }: ImageColorPickerProps)
                   {sampleSize * 2}x{sampleSize * 2}px avg
                 </span>
               )}
-              {wbCorrection && (
+              {calData && calStep === 'calibrated' && (
                 <span className="text-[10px] text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200 font-bold">
-                  WB
+                  CAL
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Metamerism warning */}
+          {calStep === 'calibrated' && (
+            <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 border border-amber-200">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
+              <p className="text-[10px] text-amber-800 leading-relaxed">
+                <span className="font-bold">Calibration active.</span> This corrects white balance and exposure but cannot fix camera metamerism — 
+                your phone sensor sees colour differently than your eye. Expect ~80% accuracy; always spray a test card before committing.
+              </p>
             </div>
           )}
         </div>

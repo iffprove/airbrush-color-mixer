@@ -11,7 +11,7 @@
 import { useState, useCallback } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Camera, Palette, BookOpen, Crosshair, Zap, Package } from 'lucide-react';
+import { Camera, Palette, BookOpen, Crosshair, Zap, Package, Download, AlertTriangle, Info } from 'lucide-react';
 import ImageColorPicker from '@/components/ImageColorPicker';
 import ManualColorPicker from '@/components/ManualColorPicker';
 import FormulaDisplay from '@/components/FormulaDisplay';
@@ -216,6 +216,49 @@ export default function Home() {
           )}
         </section>
 
+        {/* Calibration Card & Accuracy Info */}
+        <section className="workshop-panel rounded-lg p-5 space-y-4">
+          <div className="flex items-center gap-2 mb-1">
+            <Download className="w-4 h-4 text-primary" />
+            <h2 className="font-mono text-sm text-foreground uppercase tracking-wider font-bold">
+              CALIBRATION CARD
+            </h2>
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            For accurate color capture, print this calibration card on <span className="font-bold text-foreground">matte cardstock</span> and
+            keep it in your workshop. Place it next to the surface you're photographing, then use the 2-point calibration
+            (white patch + black patch) to correct color cast and exposure.
+          </p>
+          <div className="flex flex-wrap gap-3 items-center">
+            <a
+              href="/manus-storage/calibration-card_a6c2cbc1.pdf"
+              download="airbrush-calibration-card.pdf"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground font-mono text-sm font-bold hover:bg-amber-dark transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Download Calibration Card (PDF)
+            </a>
+            <span className="text-[10px] text-muted-foreground">Free - print on matte cardstock</span>
+          </div>
+          <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-700 flex-shrink-0 mt-0.5" />
+              <div className="text-[11px] text-blue-900 leading-relaxed space-y-1">
+                <p><span className="font-bold">For professionals:</span> A Kodak/X-Rite 18% gray card ($10-20 from camera stores) provides even more reliable reference than printed patches.</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+              <div className="text-[11px] text-amber-900 leading-relaxed space-y-1">
+                <p><span className="font-bold">Honest limitation:</span> Even with perfect calibration, phone cameras have different spectral sensitivity than human eyes (metamerism). Two colors that look identical to you can read as different RGB values on camera, and vice versa.</p>
+                <p>Calibration gets you ~80% of the way. The remaining 20% is a fundamental limit of phone photography. <span className="font-bold">Always spray a test card before committing to a job.</span></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* How It Works */}
         {!mixResult && (
           <section className="workshop-panel rounded-lg p-6">
@@ -229,7 +272,7 @@ export default function Home() {
                 </div>
                 <h3 className="font-bold text-foreground text-sm">1. Capture Color</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Take a photo of the surface you want to match. Use white-balance calibration for accurate colour capture.
+                  Take a photo with your calibration card in frame. Run 2-point cal (white + black patches) for corrected sampling.
                 </p>
               </div>
               <div className="space-y-2">
@@ -247,7 +290,7 @@ export default function Home() {
                 </div>
                 <h3 className="font-bold text-foreground text-sm">3. Get Formula</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Get a mixing formula with ΔE accuracy rating, ml/drops calculator, and the option to restrict to paints you own.
+                  Get a mixing formula with raw \u0394E rating, ml/drops calculator, and the option to restrict to paints you own.
                 </p>
               </div>
             </div>
