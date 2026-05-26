@@ -9,6 +9,7 @@
  */
 
 import { useState, useCallback } from 'react';
+import { downloadCalibrationCard } from '@/lib/calibrationCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Camera, Palette, BookOpen, Crosshair, Zap, Package, Download, AlertTriangle, Info, ChevronDown, ChevronRight } from 'lucide-react';
@@ -248,14 +249,13 @@ export default function Home() {
                 (white patch + black patch) to correct color cast and exposure.
               </p>
               <div className="flex flex-wrap gap-3 items-center">
-                <a
-                  href="/manus-storage/calibration-card_a6c2cbc1.pdf"
-                  download="airbrush-calibration-card.pdf"
+                <button
+                  onClick={downloadCalibrationCard}
                   className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-primary text-primary-foreground font-mono text-sm font-bold hover:bg-amber-dark transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download Calibration Card (PDF)
-                </a>
+                  Download Calibration Card (PNG)
+                </button>
                 <span className="text-[10px] text-muted-foreground">Free - print on matte cardstock</span>
               </div>
               <div className="p-3 rounded-md bg-blue-50 border border-blue-200">
