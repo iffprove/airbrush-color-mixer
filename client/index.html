@@ -3,6 +3,13 @@
 
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Restore path after GitHub Pages 404 redirect
+      (function () {
+        var p = new URLSearchParams(location.search).get('redirect');
+        if (p) history.replaceState(null, '', '/airbrush-color-mixer' + p);
+      })();
+    </script>
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
