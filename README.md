@@ -74,7 +74,21 @@ Set it to `false` and re-run `pnpm test` to see the canonical yellow+blue test f
 - **Camera white-balance** — photo sampling is affected by ambient light colour; no white-balance calibration is implemented yet.
 - **Metallic / flip-flop** — interference pigments change colour with viewing angle. The model treats them as flat colours.
 - **3-paint maximum** — the search is exhaustive; adding a 4-paint tier would be computationally expensive at current resolution.
-- **Tinting strength defaults to 1.0** — `tintingStrength` is wired up in the mixing engine but not yet tuned per-pigment. Real spray-out data is needed to calibrate individual pigments.
+- **Tinting strength estimates only** — `tintingStrength` values are name-based heuristic guesses (±50%). See the provenance section below; real spray-out data is needed to calibrate individual pigments.
+
+---
+
+## Tinting Strength Provenance
+
+Each paint in the database carries a `tintingStrength` multiplier indicating how much that pigment dominates a mix per unit volume. Current values are sourced as follows:
+
+- **estimated** — heuristic guesses derived from the paint's name and category, informed by general pigment-chemistry knowledge. May be off by ±50%. Most of the database is currently in this state.
+- **datasheet** — derived from manufacturer pigment-index data (PB15, PR101, etc.) cross-referenced against published tinting-strength tables. None yet.
+- **measured** — refined through real-world spray-out validation. None yet.
+
+Over time, the goal is to migrate the database from `estimated` → `datasheet` → `measured` for as many paints as possible. Contributions of real spray-out data welcome.
+
+The file `paints_needing_review.md` in the repo root lists the 166 paints that fell through to the default `1.0` estimate — these are the first candidates for hand-tuning.
 
 ---
 
