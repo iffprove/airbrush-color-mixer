@@ -1,17 +1,14 @@
 /**
- * Color Mixing Algorithm — v2
- * 
- * Major improvements over v1:
- * - Dual mixing model: CMY-style (inverted linear RGB) for opaques,
- *   opacity-weighted LAB for transparent/semi-transparent blends
- * - Opacity field is now used: transparent paints contribute less
- *   pigment power per unit volume than opaques
- * - Steeper match score curve — ΔE is shown raw alongside %
- * - Category-aware defaults: washes, primers, inks excluded unless opted in
- * 
+ * Color Mixing Algorithm — v3
+ *
+ * Mixing engine: Spectral.js (Kubelka-Munk) via mixPaintsSpectral (default).
+ * Legacy CMY+LAB hybrid retained as mixPaintsLegacy for A/B comparison.
+ * Toggle USE_SPECTRAL_MIX to switch between them.
+ *
  * Supports 9 brands, 400+ paints.
  */
 
+import * as spectral from 'spectral.js';
 import { Paint, PaintBrand, PaintCategory, allPaints } from './paintDatabase';
 
 // ============ Color Space Conversions ============
@@ -88,11 +85,6 @@ export function deltaE(lab1: [number, number, number], lab2: [number, number, nu
 /**
  * Model A: CMY-style mixing in inverted linear RGB.
  * Best for opaque paints where pigments absorb light.
- * 
- * Logic: Convert to linear RGB, invert to get absorption (CMY),
- * weighted-average the absorption, invert back.
- * Opacity is used as "pigment power" — a paint with opacity 0.3
- * contributes 30% of the absorption that a fully opaque paint would.
  */
 function mixCMY(paints: Paint[], ratios: number[]): [number, number, number] {
   const total = ratios.reduce((s, r) => s + r, 0);
@@ -104,10 +96,8 @@ function mixCMY(paints: Paint[], ratios: number[]): [number, number, number] {
   for (let i = 0; i < paints.length; i++) {
     const [lr, lg, lb] = rgbToLinear(paints[i].rgb[0], paints[i].rgb[1], paints[i].rgb[2]);
     const ratio = ratios[i] / total;
-    // Pigment power scales with opacity — transparent paint contributes less absorption
     const power = ratio * (0.3 + paints[i].opacity * 0.7);
-    
-    // Absorption = 1 - reflectance (in linear space)
+
     absR += (1 - lr) * power;
     absG += (1 - lg) * power;
     absB += (1 - lb) * power;
@@ -116,7 +106,6 @@ function mixCMY(paints: Paint[], ratios: number[]): [number, number, number] {
 
   if (totalWeight === 0) return [128, 128, 128];
 
-  // Normalize and convert back to reflectance
   const mixR = 1 - (absR / totalWeight);
   const mixG = 1 - (absG / totalWeight);
   const mixB = 1 - (absB / totalWeight);
@@ -127,9 +116,6 @@ function mixCMY(paints: Paint[], ratios: number[]): [number, number, number] {
 /**
  * Model B: Opacity-weighted LAB mixing.
  * Better for transparent/candy paints where layering matters.
- * 
- * Transparent paints shift chromaticity but barely affect lightness.
- * Opaque paints dominate both.
  */
 function mixLAB(paints: Paint[], ratios: number[]): [number, number, number] {
   const total = ratios.reduce((s, r) => s + r, 0);
@@ -143,13 +129,11 @@ function mixLAB(paints: Paint[], ratios: number[]): [number, number, number] {
   for (let i = 0; i < paints.length; i++) {
     const ratio = ratios[i] / total;
     const opacity = paints[i].opacity;
-    
-    // Lightness: opaque paints dominate, transparent paints barely shift L
+
     const lw = ratio * (0.2 + opacity * 0.8);
     L += labs[i][0] * lw;
     lightnessWeight += lw;
 
-    // Chromaticity: all paints contribute, but darker/more opaque ones more
     const darknessBoost = 1 + (1 - labs[i][0] / 100) * 0.5;
     const cw = ratio * darknessBoost * (0.4 + opacity * 0.6);
     a += labs[i][1] * cw;
@@ -164,14 +148,13 @@ function mixLAB(paints: Paint[], ratios: number[]): [number, number, number] {
 }
 
 /**
- * Hybrid mixer: blends CMY and LAB results based on average opacity of the mix.
- * Mostly-opaque mixes lean CMY. Mostly-transparent mixes lean LAB.
+ * Legacy hybrid mixer: blends CMY and LAB results based on average opacity.
+ * Kept for A/B comparison via USE_SPECTRAL_MIX flag.
  */
-function mixPaints(paints: Paint[], ratios: number[]): [number, number, number] {
+export function mixPaintsLegacy(paints: Paint[], ratios: number[]): [number, number, number] {
   const total = ratios.reduce((s, r) => s + r, 0);
   if (total === 0) return [0, 0, 0];
 
-  // Compute weighted average opacity
   let avgOpacity = 0;
   for (let i = 0; i < paints.length; i++) {
     avgOpacity += paints[i].opacity * (ratios[i] / total);
@@ -180,7 +163,6 @@ function mixPaints(paints: Paint[], ratios: number[]): [number, number, number] 
   const cmyResult = mixCMY(paints, ratios);
   const labResult = mixLAB(paints, ratios);
 
-  // Blend: high opacity → more CMY, low opacity → more LAB
   const cmyWeight = avgOpacity;
   const labWeight = 1 - avgOpacity;
 
@@ -189,6 +171,68 @@ function mixPaints(paints: Paint[], ratios: number[]): [number, number, number] 
     Math.round(cmyResult[1] * cmyWeight + labResult[1] * labWeight),
     Math.round(cmyResult[2] * cmyWeight + labResult[2] * labWeight),
   ];
+}
+
+// ============ Spectral Mixing (Kubelka-Munk) ============
+
+const rgbToHex = ([r, g, b]: [number, number, number]) =>
+  '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+};
+
+/**
+ * Spectral mixing via Kubelka-Munk theory (spectral.js).
+ *
+ * Uses iterative pairwise mixing with cumulative weights. This is
+ * mathematically correct because K/S mixing is linear: mix(mix(A,B), C)
+ * with t_i = w_i / (accumulated_w + w_i) is equivalent to a true N-way
+ * weighted average. Do NOT use naive 0.5 ratios for 3-paint mixes.
+ *
+ * Adapted for spectral.js v3 API which uses Color objects and [Color, factor]
+ * pairs instead of the (hexA, hexB, t) signature the spec originally assumed.
+ */
+export function mixPaintsSpectral(
+  paints: Paint[],
+  ratios: number[],
+): [number, number, number] {
+  const total = ratios.reduce((s, r) => s + r, 0);
+  if (total === 0) return [0, 0, 0];
+  if (paints.length === 1) return paints[0].rgb;
+
+  const weights = paints.map((p, i) => (ratios[i] / total) * p.tintingStrength);
+
+  // v3 API: Color objects, pairwise cumulative mixing
+  let mixedColor = new spectral.Color(paints[0].rgb as number[]);
+  let cumulative = weights[0];
+
+  for (let i = 1; i < paints.length; i++) {
+    const w = weights[i];
+    const t = w / (cumulative + w);
+    const nextColor = new spectral.Color(paints[i].rgb as number[]);
+    mixedColor = spectral.mix([mixedColor, 1 - t], [nextColor, t]);
+    cumulative += w;
+  }
+
+  const [r, g, b] = mixedColor.sRGB;
+  return [Math.round(r), Math.round(g), Math.round(b)];
+}
+
+// ============ Feature Flag ============
+
+/** Feature flag — flip to false to compare against legacy heuristic during validation. */
+export const USE_SPECTRAL_MIX = true;
+
+function mixPaints(paints: Paint[], ratios: number[]): [number, number, number] {
+  return USE_SPECTRAL_MIX
+    ? mixPaintsSpectral(paints, ratios)
+    : mixPaintsLegacy(paints, ratios);
 }
 
 // ============ Match Scoring ============
@@ -201,10 +245,8 @@ function mixPaints(paints: Paint[], ratios: number[]): [number, number, number] 
  *   3.5-5: significant difference
  *   5-10:  clearly different colour
  *   10+:   different colour entirely
- * 
- * New curve: score = 100 × e^(-ΔE/8)
- * This gives: ΔE 2 → 78%, ΔE 5 → 53%, ΔE 10 → 29%, ΔE 20 → 8%
- * Much more honest than the old linear curve.
+ *
+ * score = 100 × e^(-ΔE/8)
  */
 function computeMatchScore(dE: number): number {
   return Math.round(100 * Math.exp(-dE / 8));
@@ -278,7 +320,6 @@ function findBestPair(targetLab: [number, number, number], availablePaints: Pain
   let bestFormula: MixFormula | null = null;
   let bestDelta = Infinity;
 
-  // Finer ratio steps: 5% increments
   const ratioSteps = [0.05, 0.10, 0.15, 0.20, 0.25, 0.30, 0.35, 0.40, 0.45, 0.50,
                       0.55, 0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95];
 
@@ -319,7 +360,6 @@ function findBestTriple(targetLab: [number, number, number], availablePaints: Pa
   let bestFormula: MixFormula | null = null;
   let bestDelta = Infinity;
 
-  // Pre-filter: top 15 closest paints
   const candidates = availablePaints
     .map(p => ({
       paint: p,
@@ -407,9 +447,6 @@ export interface MixOptions {
   inventoryFilter?: Set<string>;
 }
 
-/** Categories excluded from mixing by default (user can opt in) */
-const EXCLUDED_CATEGORIES: PaintCategory[] = ['primer', 'wash', 'ink'];
-
 /**
  * Main function: Given a target RGB color, find the best mixing formulas.
  * Supports filtering by brand, category, and user inventory.
@@ -420,21 +457,20 @@ export function findMixFormula(
   targetB: number,
   options?: MixOptions
 ): MixResult {
+  // TODO(scope): currently defaults to Wicked-only to match repo description.
+  // Pre-launch decision: (a) flip default to all 9 brands and update package
+  // metadata, or (b) ship as Wicked-only v1 and update README + brand picker.
   const selectedBrands = options?.brands || ['createx-wicked'];
   const categories = options?.categories || ['transparent', 'opaque', 'detail', 'standard', 'pearl', 'metallic', 'fluorescent'];
   const maxPaints = options?.maxPaints || 3;
   const inventoryFilter = options?.inventoryFilter;
 
-  // Filter available paints by brand, category, and inventory
   let availablePaints = allPaints.filter(p => {
     if (!selectedBrands.includes(p.brand)) return false;
     if (!categories.includes(p.category)) return false;
-    // Exclude problematic categories unless explicitly included
-    if (EXCLUDED_CATEGORIES.includes(p.category) && !categories.includes(p.category)) return false;
     return true;
   });
 
-  // If inventory filter is active, restrict to owned paints only
   if (inventoryFilter && inventoryFilter.size > 0) {
     availablePaints = availablePaints.filter(p => inventoryFilter.has(`${p.brand}:${p.code}`));
   }
@@ -444,23 +480,19 @@ export function findMixFormula(
 
   const formulas: MixFormula[] = [];
 
-  // Find best single paint
   const single = findBestSingle(targetLab, availablePaints);
   if (single) formulas.push(single);
 
-  // Find best pair
   if (maxPaints >= 2 && availablePaints.length >= 2) {
     const pair = findBestPair(targetLab, availablePaints);
     if (pair) formulas.push(pair);
   }
 
-  // Find best triple
   if (maxPaints >= 3 && availablePaints.length >= 3) {
     const triple = findBestTriple(targetLab, availablePaints);
     if (triple) formulas.push(triple);
   }
 
-  // Sort by deltaE (lowest first = best match)
   formulas.sort((a, b) => a.deltaE - b.deltaE);
 
   return {
